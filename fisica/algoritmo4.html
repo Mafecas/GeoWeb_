@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Modelo Geoidal EGM96 · Departamento del Meta v2.4</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  
+<style>
+  :root { 
+    --bg-primary:#0a0e1a;
+    --bg-secondary:#121829; 
+    --text-primary:#f8fafc;
+    --text-secondary:#94a3b8;
+    --accent:#10b981;
+    --accent-hover:#0d9488;
+    --border:rgba(255,255,255,0.12);
+  }
+
+  [data-theme="light"] {
+    --bg-primary:#f1f5f9;
+    --bg-secondary:#e2e8f0;
+    --text-primary:#0f172a;
+    --text-secondary:#475569;
+    --accent:#059669;
+    --accent-hover:#047857;
+    --border:rgba(0,0,0,0.1);
+  }
+
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    overflow-x: hidden;
+  }
+
+  .card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+  }
+
+  .card:hover {
+    border-color: rgba(16,185,129,0.3);
+    box-shadow: 0 8px 30px rgba(16,185,129,0.1);
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, #10b981 0%, #3b82f6 50%, #8b5cf6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .btn {
+    transition: all 0.2s ease;
+    font-weight: 600;
+  }
+  .btn:hover { 
+    transform: translateY(-2px); 
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4); 
+  }
+
+  select, input[type="number"], input[type="range"], input[type="text"] {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    padding: 8px 12px;
+  }
+
+  select option {
+    color: #0f172a;
+    background: #e5e7eb;
+  }
+
+  input:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(16,185,129,0.25);
+  }
+
+  .plot-container { 
+    width: 100%; 
+    height: 550px; 
+    border-radius: 12px; 
+    overflow: hidden;
+    background: rgba(0,0,0,0.2);
+  }
+
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 25px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(16,185,129,0.08);
+  }
+
+  .file-info {
+    background: rgba(16,185,129,0.15);
+    border: 1px solid rgba(16,185,129,0.4);
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-top: 10px;
+  }
+
+  .progress-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10b981, #3b82f6);
+    transition: width 0.3s ease;
+  }
+
+  .formula-box {
+    background: rgba(0,0,0,0.4);
+    border-left: 3px solid #10b981;
+    padding: 12px 15px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.85em;
+    border-radius: 0 8px 8px 0;
+    margin: 8px 0;
+    overflow-x: auto;
+  }
+
+  .log-container {
+    max-height: 200px;
+    overflow-y: auto;
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    padding: 10px;
+    font-family: 'Consolas', monospace;
+    font-size: 0.8em;
+  }
+
+  .log-entry { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
+
+  .stat-card {
+    background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(59,130,246,0.1));
+    border: 1px solid rgba(16,185,129,0.2);
+    border-radius: 12px;
+    padding: 15px;
+    text-align: center;
+  }
+
+  body::before {
+    content:"";
+    position:fixed;
+    top:0; left:0; width:100%; height:100%;
+    background:
+      radial-gradient(ellipse at 20% 20%, rgba(16,185,129,0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(59,130,246,0.08) 0%, transparent 50%);
+    z-index:-1;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body class="min-h-screen p-4 md:p-6">
+  <div class="max-w-7xl mx-auto">
+    
+    <!-- Header -->
+    <header class="flex flex-col md:flex-row items-center justify-between mb-6 gap-4">
+      <div>
+        <h1 class="text-3xl md:text-4xl font-bold gradient-text mb-1">
+          🌍 Modelo Geoidal EGM96 · <span id="nombreDeptoHeader">Meta</span>
+        </h1>
+        <p class="text-sm" style="color: var(--text-secondary)">
+          Universidad Distrital Francisco José de Caldas - Geodesia Física - Grupo 4
+        </p>
+      </div>
+      <button id="themeToggle" class="px-4 py-2 rounded-xl card btn">
+        <span id="themeIcon">🌙</span>
+      </button>
+    </header>
+
+    <!-- Fundamentos Matemáticos -->
+    <section class="card p-5 rounded-2xl mb-6">
+      <details>
+        <summary class="text-xl font-bold cursor-pointer" style="color: var(--accent)">
+          📐 Fundamentos Matemáticos
+        </summary>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+          <div>
+            <h4 class="font-bold mb-2">Síntesis Armónica</h4>
+            <div class="formula-box text-xs">
+              N(φ,λ) = (a/γ) Σₙ₌₂ᴸ Σₘ₌₀ⁿ (a/r)ⁿ P̄ₙₘ(sinφ)<br>
+              × [Cₙₘ cos(mλ) + Sₙₘ sin(mλ)]
+            </div>
+          </div>
+          <div>
+            <h4 class="font-bold mb-2">Gravedad Normal (Somigliana)</h4>
+            <div class="formula-box text-xs">
+              γ(φ) = γₑ(1 + k·sin²φ) / √(1 - e²·sin²φ)<br>
+              γₑ = 9.7803253359 m/s²
+            </div>
+          </div>
+          <div>
+            <h4 class="font-bold mb-2">Modelo Híbrido</h4>
+            <div class="formula-box text-xs">
+              N_híb = N_EGM96 + α·H - β·ΔgAAL<br>
+              α = 0.005, β = 0.00002
+            </div>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <!-- Panel de Carga -->
+    <section class="card p-5 rounded-2xl mb-6">
+      <h2 class="text-xl font-bold mb-4" style="color: var(--accent)">📂 Carga de Datos</h2>
+      
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div>
+          <label class="block font-semibold mb-2">Coeficientes EGM96.gfc</label>
+          <div class="upload-zone" id="egmZone">
+            <input type="file" id="egmFile" accept=".gfc,.txt" class="hidden">
+            <div class="text-3xl mb-2">📊</div>
+            <p class="font-semibold text-sm">Click o arrastra archivo</p>
+            <p class="text-xs" style="color: var(--text-secondary)">Formato: n m Cnm Snm</p>
+          </div>
+          <div id="egmInfo" class="hidden"></div>
+        </div>
+
+        <div>
+          <label class="block font-semibold mb-2">Datos del Departamento (TXT)</label>
+          <div class="upload-zone" id="metaZone">
+            <input type="file" id="metaFile" accept=".txt,.csv" class="hidden">
+            <div class="text-3xl mb-2">📈</div>
+            <p class="font-semibold text-sm">Click o arrastra archivo</p>
+            <p class="text-xs" style="color: var(--text-secondary)">Formato: Lon Lat H AAL</p>
+          </div>
+          <div id="metaInfo" class="hidden"></div>
+
+          <div class="mt-3">
+            <label class="block text-xs font-semibold mb-1">Nombre del departamento</label>
+            <input type="text" id="departamentoInput" class="w-full text-sm" placeholder="Ej: Meta, Chocó...">
+          </div>
+        </div>
+      </div>
+
+      <!-- Progreso -->
+      <div id="progressContainer" class="hidden mt-4">
+        <div class="flex justify-between text-sm mb-1">
+          <span id="progressText">Procesando...</span>
+          <span id="progressPercent">0%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Log -->
+      <div id="logContainer" class="hidden mt-4">
+        <details open>
+          <summary class="font-bold text-sm cursor-pointer mb-2">📋 Log de Cálculos</summary>
+          <div class="log-container" id="calcLog"></div>
+        </details>
+      </div>
+
+      <!-- Botón Procesar -->
+      <div class="mt-4 flex flex-wrap gap-3 items-center">
+        <button id="btnProcesar" class="px-6 py-2 rounded-xl font-bold btn text-white disabled:opacity-50" 
+                style="background: var(--accent)" disabled>
+          🚀 Procesar Datos
+        </button>
+        <span id="fileStatus" class="text-sm" style="color: var(--text-secondary)">
+          Esperando archivos...
+        </span>
+      </div>
+    </section>
+
+    <!-- Panel de Control -->
+    <section id="controlPanel" class="card p-5 rounded-2xl mb-6 hidden">
+      <h2 class="text-xl font-bold mb-4" style="color: var(--accent)">⚙️ Configuración</h2>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 text-sm">
+        <div class="stat-card">
+          <div style="color: var(--text-secondary)">Coeficientes</div>
+          <div class="text-lg font-bold" id="infoCoefs">--</div>
+        </div>
+        <div class="stat-card">
+          <div style="color: var(--text-secondary)">Puntos</div>
+          <div class="text-lg font-bold" id="infoPuntos">--</div>
+        </div>
+        <div class="stat-card">
+          <div style="color: var(--text-secondary)">Truncamiento</div>
+          <div class="text-lg font-bold">L = 170</div>
+        </div>
+        <div class="stat-card">
+          <div style="color: var(--text-secondary)">Grilla</div>
+          <div class="text-lg font-bold" id="infoGrilla">--</div>
+        </div>
+      </div>
+
+      <!-- Tipo de Mapa -->
+      <div class="mb-4">
+        <label class="block font-semibold mb-2">🗺️ Tipo de Mapa:</label>
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-2">
+          <button onclick="selectMap('egm96')" id="btn-egm96" 
+                  class="px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg btn text-white text-sm">
+            🌐 EGM96
+          </button>
+          <button onclick="selectMap('gravimetrico')" id="btn-gravimetrico" 
+                  class="px-3 py-2 bg-teal-600 hover:bg-teal-700 rounded-lg btn text-white text-sm">
+            🔬 Gravimétrico
+          </button>
+          <button onclick="selectMap('diferencias')" id="btn-diferencias" 
+                  class="px-3 py-2 bg-green-600 hover:bg-green-700 rounded-lg btn text-white text-sm">
+            📊 Diferencias
+          </button>
+          <button onclick="selectMap('hibrido')" id="btn-hibrido" 
+                  class="px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg btn text-white text-sm">
+            ⭐ Híbrido
+          </button>
+          <button onclick="selectMap('topografia')" id="btn-topografia" 
+                  class="px-3 py-2 bg-orange-600 hover:bg-orange-700 rounded-lg btn text-white text-sm">
+            ⛰️ Topografía
+          </button>
+          <button onclick="selectMap('aal')" id="btn-aal" 
+                  class="px-3 py-2 bg-red-600 hover:bg-red-700 rounded-lg btn text-white text-sm">
+            📉 AAL
+          </button>
+        </div>
+      </div>
+
+      <!-- Opciones -->
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+        <div>
+          <label class="block text-sm font-semibold mb-1">Vista</label>
+          <select id="viewType" class="w-full text-sm">
+            <option value="2d">2D Contornos</option>
+            <option value="3d">3D Superficie</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Paleta</label>
+          <select id="colorScale" class="w-full text-sm">
+            <option value="Jet">Jet</option>
+            <option value="Viridis">Viridis</option>
+            <option value="RdBu">RdBu</option>
+            <option value="Earth">Earth</option>
+            <option value="Portland">Portland</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Resolución</label>
+          <select id="gridRes" class="w-full text-sm">
+            <option value="0.25">0.25° (rápido)</option>
+            <option value="0.15">0.15° (medio)</option>
+            <option value="0.1">0.10° (fino)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold mb-1">Suavizado 3D</label>
+          <select id="smoothing" class="w-full text-sm">
+            <option value="0">Sin suavizado</option>
+            <option value="1" selected>Ligero</option>
+            <option value="2">Medio</option>
+            <option value="3">Fuerte</option>
+          </select>
+        </div>
+        <div>
+          <label class="flex items-center gap-2 text-sm font-semibold h-full">
+            <input type="checkbox" id="showContours" checked class="w-4 h-4">
+            Contornos
+          </label>
+        </div>
+      </div>
+
+      <!-- Botones -->
+      <div class="flex flex-wrap gap-2">
+        <button onclick="generarMapa()" class="px-5 py-2 rounded-lg font-bold btn text-white text-sm" 
+                style="background: var(--accent)">
+          🎨 Generar Mapa
+        </button>
+        <button onclick="generarGaleria()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-bold btn text-white text-sm">
+          🖼️ Galería (4 mapas)
+        </button>
+        <button onclick="generarPerfiles()" class="px-5 py-2 bg-cyan-600 hover:bg-cyan-700 rounded-lg font-bold btn text-white text-sm">
+          📈 Perfiles
+        </button>
+        <button onclick="generarHistogramas()" class="px-5 py-2 bg-pink-600 hover:bg-pink-700 rounded-lg font-bold btn text-white text-sm">
+          📊 Histogramas
+        </button>
+        <button onclick="descargarDatos()" class="px-5 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-bold btn text-white text-sm">
+          📥 Descargar XYZ
+        </button>
+      </div>
+    </section>
+
+    <!-- Visualización Principal -->
+    <section id="plotSection" class="card p-5 rounded-2xl mb-6 hidden">
+      <h2 class="text-xl font-bold mb-3" style="color: var(--accent)">
+        🗺️ <span id="plotTitle">Visualización</span>
+      </h2>
+      <div id="plot" class="plot-container"></div>
+    </section>
+
+    <!-- Estadísticas -->
+    <section id="statsSection" class="card p-5 rounded-2xl mb-6 hidden">
+      <h2 class="text-xl font-bold mb-4" style="color: var(--accent)">📊 Estadísticas</h2>
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div class="stat-card">
+          <div class="text-sm" style="color: var(--text-secondary)">Mínimo</div>
+          <div class="text-xl font-bold" style="color: var(--accent)" id="statMin">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="text-sm" style="color: var(--text-secondary)">Máximo</div>
+          <div class="text-xl font-bold" style="color: var(--accent)" id="statMax">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="text-sm" style="color: var(--text-secondary)">Media</div>
+          <div class="text-xl font-bold" style="color: var(--accent)" id="statMean">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="text-sm" style="color: var(--text-secondary)">Desv. Std</div>
+          <div class="text-xl font-bold" style="color: var(--accent)" id="statStd">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="text-sm" style="color: var(--text-secondary)">RMS</div>
+          <div class="text-xl font-bold" style="color: var(--accent)" id="statRMS">--</div>
+        </div>
+      </div>
+      <div id="gridInfoBox" class="mt-4 text-xs" style="color: var(--text-secondary)"></div>
+    </section>
+
+    <!-- Galería -->
+    <section id="gallerySection" class="card p-5 rounded-2xl mb-6 hidden">
+      <h2 class="text-xl font-bold mb-4" style="color: var(--accent)">🖼️ Galería de Mapas Geoidales</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div id="plot1" class="plot-container" style="height: 400px;"></div>
+        <div id="plot2" class="plot-container" style="height: 400px;"></div>
+        <div id="plot3" class="plot-container" style="height: 400px;"></div>
+        <div id="plot4" class="plot-container" style="height: 400px;"></div>
+      </div>
+    </section>
+
+    <!-- Perfiles -->
+    <section id="profileSection" class="card p-5 rounded-2xl mb-6 hidden">
+      <h2 class="text-xl font-bold mb-4" style="color: var(--accent)">📈 Perfiles Geoidales</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div id="profileEW" class="plot-container" style="height: 350px;"></div>
+        <div id="profileNS" class="plot-container" style="height: 350px;"></div>
+      </div>
+    </section>
+
+    <!-- Histogramas -->
+    <section id="histSection" class="card p-5 rounded-2xl mb-6 hidden">
+      <h2 class="text-xl font-bold mb-4" style="color: var(--accent)">📊 Distribuciones</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div id="hist1" class="plot-container" style="height: 300px;"></div>
+        <div id="hist2" class="plot-container" style="height: 300px;"></div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="text-center py-6" style="color: var(--text-secondary)">
+      <p class="font-bold" style="color: var(--accent)">Universidad Distrital Francisco José de Caldas</p>
+      <p class="text-sm">Geodesia Física - Grupo 4 | 2025</p>
+    </footer>
+  </div>
+
+<script>
+// ============================================================================
+// CONSTANTES GEODÉSICAS (WGS84/EGM96)
+// ============================================================================
+
+const GEO = {
+  a: 6378137.0,              // Semieje mayor (m)
+  f: 1 / 298.257223563,      // Aplanamiento
+  GM: 3.986004418e14,        // Parámetro gravitacional
+  gamma_e: 9.7803253359,     // Gravedad ecuatorial
+  k: 0.00193185265241,       // Constante Somigliana
+  alpha: 0.005,              // Coef. topográfico
+  beta: 0.00002,             // Coef. gravimétrico
+  L_max: 170                 // Truncamiento
+};
+
+GEO.e2 = GEO.f * (2 - GEO.f);
+GEO.e = Math.sqrt(GEO.e2);
+
+// Región del Meta (valores por defecto)
+let REGION = {
+  latMin: 1.146634,
+  latMax: 5.451873,
+  lonMin: -77.0467483,
+  lonMax: -69.196255
+};
+
+// Variables globales
+let coefEGM = null;
+let datosMeta = null;
+let resultados = null;
+let mapaActual = 'egm96';
+let departamentoNombre = 'Meta';
+let logFact = [];
+
+// ============================================================================
+// UTILIDADES
+// ============================================================================
+
+function preCalcularLogFactoriales(maxN) {
+  logFact = [0];
+  for (let i = 1; i <= 2 * maxN + 2; i++) {
+    logFact[i] = logFact[i-1] + Math.log(i);
+  }
+}
+
+function mostrarProgreso(pct, texto) {
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressPercent').textContent = Math.round(pct) + '%';
+  document.getElementById('progressText').textContent = texto;
+}
+
+function addLog(texto) {
+  const log = document.getElementById('calcLog');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.textContent = texto;
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+}
+
+// ============================================================================
+// CARGA DE ARCHIVOS
+// ============================================================================
+
+function setupUploadZones() {
+  setupZone('egmZone', 'egmFile', procesarEGM96);
+  setupZone('metaZone', 'metaFile', procesarDatosMeta);
+}
+
+function setupZone(zoneId, inputId, callback) {
+  const zone = document.getElementById(zoneId);
+  const input = document.getElementById(inputId);
+  
+  zone.onclick = () => input.click();
+  zone.ondragover = e => { e.preventDefault(); zone.classList.add('dragover'); };
+  zone.ondragleave = () => zone.classList.remove('dragover');
+  zone.ondrop = e => {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    if (e.dataTransfer.files.length > 0) {
+      input.files = e.dataTransfer.files;
+      callback(e.dataTransfer.files[0]);
+    }
+  };
+  input.onchange = e => {
+    if (e.target.files.length > 0) callback(e.target.files[0]);
+  };
+}
+
+function procesarEGM96(file) {
+  mostrarProgreso(0, 'Leyendo EGM96.gfc...');
+  document.getElementById('progressContainer').classList.remove('hidden');
+  document.getElementById('logContainer').classList.remove('hidden');
+  
+  const reader = new FileReader();
+  reader.onload = e => {
+    const lineas = e.target.result.split('\n');
+    let C = {}, S = {};
+    let maxN = 0, count = 0;
+    
+    addLog('📖 Leyendo coeficientes EGM96...');
+    
+    for (let linea of lineas) {
+      linea = linea.trim();
+      if (!linea || linea.startsWith('#') || linea.startsWith('end')) continue;
+      
+      const partes = linea.split(/\s+/);
+      if (partes.length >= 4) {
+        const n = parseInt(partes[0]);
+        const m = parseInt(partes[1]);
+        const Cnm = parseFloat(partes[2]);
+        const Snm = parseFloat(partes[3]);
+        
+        if (!isNaN(n) && !isNaN(m) && !isNaN(Cnm) && !isNaN(Snm) && n <= GEO.L_max) {
+          if (!C[n]) { C[n] = {}; S[n] = {}; }
+          C[n][m] = Cnm;
+          S[n][m] = Snm;
+          maxN = Math.max(maxN, n);
+          count++;
+        }
+      }
+    }
+    
+    coefEGM = { C, S, maxN, count };
+    preCalcularLogFactoriales(GEO.L_max);
+    
+    addLog(`✓ Coeficientes leídos: ${count}`);
+    addLog(`✓ Grado máximo: ${maxN}`);
+    addLog(`✓ C₂₀ (J₂) = ${C[2][0].toExponential(6)}`);
+    
+    document.getElementById('egmInfo').innerHTML = 
+      `<div class="file-info">✓ ${file.name} (${count} coef., L=${maxN})</div>`;
+    document.getElementById('egmInfo').classList.remove('hidden');
+    
+    verificarArchivos();
+    mostrarProgreso(50, 'EGM96 cargado ✓');
+  };
+  reader.readAsText(file);
+}
+
+function procesarDatosMeta(file) {
+  mostrarProgreso(50, 'Leyendo datos...');
+  
+  const reader = new FileReader();
+  reader.onload = e => {
+    const lineas = e.target.result.split('\n');
+    let datos = [];
+    
+    addLog('\n📖 Leyendo archivo de datos...');
+    
+    for (let i = 1; i < lineas.length; i++) {
+      const linea = lineas[i].trim();
+      if (!linea) continue;
+      
+      const p = linea.split(/\s+/);
+      if (p.length >= 4) {
+        const lon = parseFloat(p[0]);
+        const lat = parseFloat(p[1]);
+        const H = parseFloat(p[2]);
+        const AAL = parseFloat(p[3]);
+        
+        if (!isNaN(lon) && !isNaN(lat) && !isNaN(H) && !isNaN(AAL)) {
+          datos.push({ lon, lat, H, AAL });
+        }
+      }
+    }
+    
+    datosMeta = datos;
+    
+    // Obtener estadísticas de los datos
+    const Hs = datos.map(d => d.H);
+    const AALs = datos.map(d => d.AAL);
+    const latsData = datos.map(d => d.lat);
+    const lonsData = datos.map(d => d.lon);
+    
+    addLog(`✓ Puntos leídos: ${datos.length}`);
+    addLog(`✓ H: [${Math.min(...Hs).toFixed(0)}, ${Math.max(...Hs).toFixed(0)}] m`);
+    addLog(`✓ AAL: [${Math.min(...AALs).toFixed(1)}, ${Math.max(...AALs).toFixed(1)}] mGal`);
+    
+    // Actualizar región desde los datos
+    const margen = 0.05;
+    REGION.latMin = Math.min(...latsData) - margen;
+    REGION.latMax = Math.max(...latsData) + margen;
+    REGION.lonMin = Math.min(...lonsData) - margen;
+    REGION.lonMax = Math.max(...lonsData) + margen;
+    
+    addLog(`✓ Región detectada:`);
+    addLog(`   Lat: [${REGION.latMin.toFixed(4)}°, ${REGION.latMax.toFixed(4)}°]`);
+    addLog(`   Lon: [${REGION.lonMin.toFixed(4)}°, ${REGION.lonMax.toFixed(4)}°]`);
+    
+    // Nombre del departamento
+    const deptInput = document.getElementById('departamentoInput');
+    if (deptInput && deptInput.value.trim() !== '') {
+      departamentoNombre = deptInput.value.trim();
+    } else {
+      const base = file.name.split('.')[0];
+      const limpio = base.replace(/grupo\s*\d+[_\s]*/i, '').replace(/_/g, ' ').trim();
+      departamentoNombre = limpio || 'Departamento';
+    }
+    document.getElementById('nombreDeptoHeader').textContent = departamentoNombre;
+    
+    document.getElementById('metaInfo').innerHTML = 
+      `<div class="file-info">✓ ${file.name} (${datos.length} puntos)</div>`;
+    document.getElementById('metaInfo').classList.remove('hidden');
+    
+    verificarArchivos();
+    mostrarProgreso(80, 'Datos cargados ✓');
+  };
+  reader.readAsText(file);
+}
+
+function verificarArchivos() {
+  if (coefEGM && datosMeta) {
+    document.getElementById('btnProcesar').disabled = false;
+    document.getElementById('fileStatus').textContent = '✓ Listo para procesar';
+    document.getElementById('fileStatus').style.color = '#10b981';
+    addLog('\n✓ Archivos listos. Click en "Procesar Datos"');
+  }
+}
+
+// ============================================================================
+// POLINOMIOS DE LEGENDRE NORMALIZADOS (Corregido según MATLAB)
+// ============================================================================
+
+function calcularLegendreNormalizado(Lmax, x) {
+  const sqt = Math.sqrt(Math.max(1e-24, 1 - x * x));
+  
+  let P = [];
+  for (let n = 0; n <= Lmax; n++) {
+    P[n] = new Array(n + 1).fill(0);
+  }
+  
+  P[0][0] = 1;
+  
+  for (let m = 0; m <= Lmax; m++) {
+    if (m > 0) {
+      P[m][m] = (2 * m - 1) * sqt * P[m-1][m-1];
+    }
+    if (m + 1 <= Lmax) {
+      P[m+1][m] = (2 * m + 1) * x * P[m][m];
+    }
+    for (let n = m + 2; n <= Lmax; n++) {
+      const a_nm = Math.sqrt((2*n - 1) * (2*n + 1) / ((n - m) * (n + m)));
+      const b_nm = Math.sqrt((2*n + 1) * (n + m - 1) * (n - m - 1) / ((2*n - 3) * (n - m) * (n + m)));
+      P[n][m] = a_nm * x * P[n-1][m] - b_nm * P[n-2][m];
+      if (!isFinite(P[n][m])) P[n][m] = 0;
+    }
+  }
+  
+  for (let n = 0; n <= Lmax; n++) {
+    for (let m = 0; m <= n; m++) {
+      const delta = (m === 0) ? 1 : 0;
+      const logFactor = 0.5 * (
+        Math.log(2 * n + 1) +
+        logFact[n - m] -
+        Math.log(2 - delta) -
+        logFact[n + m]
+      );
+      P[n][m] *= Math.exp(logFactor);
+      if (!isFinite(P[n][m])) P[n][m] = 0;
+    }
+  }
+  
+  return P;
+}
+
+// ============================================================================
+// FUNCIONES GEODÉSICAS
+// ============================================================================
+
+function gravedadNormal(latRad) {
+  const s = Math.sin(latRad);
+  const s2 = s * s;
+  return GEO.gamma_e * (1 + GEO.k * s2) / Math.sqrt(1 - GEO.e2 * s2);
+}
+
+function latGeodeticaAGeocentrica(latGd) {
+  return Math.atan((1 - GEO.e2) * Math.tan(latGd));
+}
+
+function radioGeocentrico(latGdRad) {
+  const cosPhi = Math.cos(latGdRad);
+  return GEO.a * Math.sqrt((1 - GEO.e2) / (1 - GEO.e2 * cosPhi * cosPhi));
+}
+
+function calcularOndulacionGeoidal(latDeg, lonDeg, C, S, L) {
+  const phi = latDeg * Math.PI / 180;
+  const lam = lonDeg * Math.PI / 180;
+  
+  const phi_gc = latGeodeticaAGeocentrica(phi);
+  const theta = Math.PI / 2 - phi_gc;
+  const x_leg = Math.cos(theta);
+  
+  const r = radioGeocentrico(phi);
+  const gamma = gravedadNormal(phi);
+  const P = calcularLegendreNormalizado(L, x_leg);
+  
+  let suma = 0;
+  for (let n = 2; n <= L; n++) {
+    const factor = Math.pow(GEO.a / r, n);
+    for (let m = 0; m <= n; m++) {
+      if (C[n] && C[n][m] !== undefined) {
+        const cosML = Math.cos(m * lam);
+        const sinML = Math.sin(m * lam);
+        suma += factor * P[n][m] * (C[n][m] * cosML + S[n][m] * sinML);
+      }
+    }
+  }
+  
+  return (GEO.a / gamma) * suma;
+}
+
+// ============================================================================
+// INTERPOLACIÓN IDW MEJORADA
+// ============================================================================
+
+function interpolarIDW(lats, lons, datos, campo) {
+  const grid = [];
+  const cellSize = 0.25;
+  
+  const index = {};
+  for (let p of datos) {
+    const key = `${Math.floor(p.lat / cellSize)}_${Math.floor(p.lon / cellSize)}`;
+    if (!index[key]) index[key] = [];
+    index[key].push(p);
+  }
+  
+  for (let i = 0; i < lats.length; i++) {
+    grid[i] = [];
+    for (let j = 0; j < lons.length; j++) {
+      let candidates = [];
+      
+      for (let di = -2; di <= 2; di++) {
+        for (let dj = -2; dj <= 2; dj++) {
+          const key = `${Math.floor(lats[i] / cellSize) + di}_${Math.floor(lons[j] / cellSize) + dj}`;
+          if (index[key]) candidates = candidates.concat(index[key]);
+        }
+      }
+      
+      if (candidates.length === 0) {
+        let minD = Infinity, val = 0;
+        for (let p of datos.slice(0, 3000)) {
+          const d = Math.hypot(lats[i] - p.lat, lons[j] - p.lon);
+          if (d < minD) { minD = d; val = p[campo]; }
+        }
+        grid[i][j] = val;
+      } else {
+        candidates.sort((a, b) => {
+          return Math.hypot(lats[i] - a.lat, lons[j] - a.lon) - 
+                 Math.hypot(lats[i] - b.lat, lons[j] - b.lon);
+        });
+        
+        const k = Math.min(6, candidates.length);
+        let sumW = 0, sumWV = 0;
+        
+        for (let n = 0; n < k; n++) {
+          const d = Math.hypot(lats[i] - candidates[n].lat, lons[j] - candidates[n].lon);
+          const w = d < 0.001 ? 1e8 : 1 / (d * d);
+          sumW += w;
+          sumWV += w * candidates[n][campo];
+        }
+        
+        grid[i][j] = sumWV / sumW;
+      }
+    }
+  }
+  
+  return grid;
+}
+
+// ============================================================================
+// SUAVIZADO GAUSSIANO
+// ============================================================================
+
+function aplicarSuavizado(matriz, nivel) {
+  if (nivel === 0) return matriz;
+  
+  const sizes = [0, 3, 5, 7];
+  const sigmas = [0, 0.8, 1.2, 1.8];
+  const tam = sizes[nivel];
+  const sigma = sigmas[nivel];
+  
+  const kernel = [];
+  let sum = 0;
+  const mid = Math.floor(tam / 2);
+  
+  for (let i = 0; i < tam; i++) {
+    kernel[i] = [];
+    for (let j = 0; j < tam; j++) {
+      const x = i - mid, y = j - mid;
+      const val = Math.exp(-(x*x + y*y) / (2 * sigma * sigma));
+      kernel[i][j] = val;
+      sum += val;
+    }
+  }
+  
+  for (let i = 0; i < tam; i++)
+    for (let j = 0; j < tam; j++)
+      kernel[i][j] /= sum;
+  
+  const nRows = matriz.length;
+  const nCols = matriz[0].length;
+  const resultado = [];
+  
+  for (let i = 0; i < nRows; i++) {
+    resultado[i] = [];
+    for (let j = 0; j < nCols; j++) {
+      let val = 0, wSum = 0;
+      for (let ki = 0; ki < tam; ki++) {
+        for (let kj = 0; kj < tam; kj++) {
+          const ii = i + ki - mid;
+          const jj = j + kj - mid;
+          if (ii >= 0 && ii < nRows && jj >= 0 && jj < nCols) {
+            val += matriz[ii][jj] * kernel[ki][kj];
+            wSum += kernel[ki][kj];
+          }
+        }
+      }
+      resultado[i][j] = val / wSum;
+    }
+  }
+  
+  return resultado;
+}
+
+// ============================================================================
+// CÁLCULO DE MODELOS - CORREGIDO v2.4
+// ============================================================================
+
+function calcularModelos() {
+  const res = parseFloat(document.getElementById('gridRes').value);
+  
+  addLog('\n' + '='.repeat(50));
+  addLog(`🔬 CALCULANDO MODELOS - ${departamentoNombre}`);
+  addLog('='.repeat(50));
+  
+  const lats = [];
+  const lons = [];
+  
+  for (let lat = REGION.latMin; lat <= REGION.latMax + 1e-9; lat += res) {
+    lats.push(lat);
+  }
+  for (let lon = REGION.lonMin; lon <= REGION.lonMax + 1e-9; lon += res) {
+    lons.push(lon);
+  }
+  
+  addLog(`\n📐 Grilla: ${lats.length} × ${lons.length} = ${lats.length * lons.length} puntos`);
+  addLog(`   Latitud: [${lats[0].toFixed(4)}°, ${lats[lats.length-1].toFixed(4)}°] (S→N)`);
+  addLog(`   Longitud: [${lons[0].toFixed(4)}°, ${lons[lons.length-1].toFixed(4)}°] (W→E)`);
+  
+  document.getElementById('infoGrilla').textContent = `${lats.length}×${lons.length}`;
+  
+  // Interpolar H y AAL
+  addLog('\n📍 Interpolando H y AAL a la grilla...');
+  const gridH = interpolarIDW(lats, lons, datosMeta, 'H');
+  const gridAAL = interpolarIDW(lats, lons, datosMeta, 'AAL');
+  
+  // =========================================================================
+  // CÁLCULO EGM96 PURO (síntesis armónica) - valores suaves ~780-790 m
+  // =========================================================================
+  addLog(`\n🌐 Calculando ondulación geoidal EGM96 (L=${GEO.L_max})...`);
+  
+  const N_egm96_puro = [];
+  const total = lats.length * lons.length;
+  let contador = 0;
+  
+  for (let i = 0; i < lats.length; i++) {
+    N_egm96_puro[i] = [];
+    for (let j = 0; j < lons.length; j++) {
+      N_egm96_puro[i][j] = calcularOndulacionGeoidal(
+        lats[i], lons[j],
+        coefEGM.C, coefEGM.S,
+        GEO.L_max
+      );
+      contador++;
+      
+      if (contador % 50 === 0) {
+        const pct = Math.round(100 * contador / total);
+        mostrarProgreso(20 + pct * 0.5, `Calculando EGM96... ${pct}%`);
+      }
+    }
+  }
+  
+  const statsEGM = calcStats(N_egm96_puro);
+  addLog(`   ✓ N_EGM96 (puro): [${statsEGM.min.toFixed(2)}, ${statsEGM.max.toFixed(2)}] m`);
+  addLog(`     Media: ${statsEGM.mean.toFixed(2)} m, σ: ${statsEGM.std.toFixed(3)} m`);
+  
+  // =========================================================================
+  // GEOIDE GRAVIMÉTRICO = EGM96 + contribución de AAL - valores ~700-1200 m
+  // Este refleja las anomalías gravimétricas locales (topografía)
+  // =========================================================================
+  addLog('\n🔬 Calculando geoide gravimétrico (EGM96 + AAL)...');
+  
+  const N_grav = [];
+  for (let i = 0; i < lats.length; i++) {
+    N_grav[i] = [];
+    for (let j = 0; j < lons.length; j++) {
+      const gamma = gravedadNormal(lats[i] * Math.PI / 180);
+      const R = 6371000;
+      // Factor de conversión AAL a ondulación geoidal
+      const factorAAL = R / gamma * 1e-5;
+      // El geoide gravimétrico incluye las anomalías gravimétricas
+      N_grav[i][j] = N_egm96_puro[i][j] + gridAAL[i][j] * factorAAL * 0.15;
+    }
+  }
+  
+  const statsGrav = calcStats(N_grav);
+  addLog(`   ✓ N_grav: [${statsGrav.min.toFixed(2)}, ${statsGrav.max.toFixed(2)}] m`);
+  
+  // =========================================================================
+  // DIFERENCIAS = Gravimétrico - EGM96
+  // =========================================================================
+  addLog('\n📊 Calculando diferencias (Grav - EGM96)...');
+  const N_dif = [];
+  for (let i = 0; i < lats.length; i++) {
+    N_dif[i] = [];
+    for (let j = 0; j < lons.length; j++) {
+      N_dif[i][j] = N_grav[i][j] - N_egm96_puro[i][j];
+    }
+  }
+  
+  const statsDif = calcStats(N_dif);
+  addLog(`   ✓ ΔN: [${statsDif.min.toFixed(3)}, ${statsDif.max.toFixed(3)}] m, RMS: ${statsDif.rms.toFixed(4)} m`);
+  
+  // =========================================================================
+  // MODELO HÍBRIDO = EGM96 + α·H - β·AAL
+  // =========================================================================
+  addLog('\n⭐ Calculando geoide híbrido...');
+  addLog(`   N_híb = N_EGM96 + α·H - β·AAL (α=${GEO.alpha}, β=${GEO.beta})`);
+  
+  const N_hib = [];
+  for (let i = 0; i < lats.length; i++) {
+    N_hib[i] = [];
+    for (let j = 0; j < lons.length; j++) {
+      N_hib[i][j] = N_egm96_puro[i][j] + GEO.alpha * gridH[i][j] - GEO.beta * gridAAL[i][j];
+    }
+  }
+  
+  const statsHib = calcStats(N_hib);
+  addLog(`   ✓ N_híbrido: [${statsHib.min.toFixed(2)}, ${statsHib.max.toFixed(2)}] m`);
+  
+  // =========================================================================
+  // GUARDAR RESULTADOS - CORREGIDO:
+  // N_egm96 = síntesis armónica pura (suave)
+  // N_grav = con anomalías gravimétricas (rugoso)
+  // =========================================================================
+  resultados = {
+    lats,
+    lons,
+    N_egm96: N_egm96_puro,  // EGM96 puro - ondulación suave
+    N_grav: N_grav,          // Gravimétrico - con anomalías
+    N_dif,
+    N_hib,
+    H: gridH,
+    AAL: gridAAL
+  };
+  
+  mostrarProgreso(100, '✓ Cálculos completados');
+  
+  addLog('\n' + '='.repeat(50));
+  addLog('✅ MODELOS CALCULADOS CORRECTAMENTE (v2.4)');
+  addLog('   • EGM96: Ondulación suave desde coeficientes');
+  addLog('   • Gravimétrico: EGM96 + anomalías AAL');
+  addLog('='.repeat(50));
+  
+  document.getElementById('gridInfoBox').innerHTML = `
+    <div class="mt-2">
+      <span class="font-semibold" style="color: var(--accent)">Grilla: ${departamentoNombre}</span><br>
+      Latitud: [${REGION.latMin.toFixed(3)}°, ${REGION.latMax.toFixed(3)}°] (${lats.length} nodos)<br>
+      Longitud: [${REGION.lonMin.toFixed(3)}°, ${REGION.lonMax.toFixed(3)}°] (${lons.length} nodos)<br>
+      Resolución: ${res.toFixed(2)}° · Total: ${lats.length * lons.length} celdas
+    </div>`;
+}
+
+function calcStats(matriz) {
+  const flat = matriz.flat();
+  const min = Math.min(...flat);
+  const max = Math.max(...flat);
+  const sum = flat.reduce((a, b) => a + b, 0);
+  const mean = sum / flat.length;
+  const variance = flat.reduce((s, n) => s + (n - mean) ** 2, 0) / flat.length;
+  const std = Math.sqrt(variance);
+  const rms = Math.sqrt(flat.reduce((s, n) => s + n * n, 0) / flat.length);
+  return { min, max, mean, std, rms, count: flat.length };
+}
+
+// ============================================================================
+// VISUALIZACIÓN
+// ============================================================================
+
+function selectMap(tipo) {
+  mapaActual = tipo;
+  ['egm96', 'gravimetrico', 'diferencias', 'hibrido', 'topografia', 'aal'].forEach(t => {
+    const btn = document.getElementById('btn-' + t);
+    if (btn) {
+      btn.style.opacity = t === tipo ? '1' : '0.6';
+      btn.style.transform = t === tipo ? 'scale(1.02)' : 'scale(1)';
+    }
+  });
+}
+
+function getDatosActuales() {
+  if (!resultados) return null;
+  
+  // CORREGIDO v2.4: Los mapas ahora corresponden correctamente
+  const mapas = {
+    // EGM96 = síntesis armónica pura (valores suaves ~780-790 m)
+    egm96: { 
+      data: resultados.N_egm96, 
+      titulo: `Ondulación Geoidal N (EGM96 L=170) – ${departamentoNombre}`, 
+      unidad: 'N (m)', 
+      color: 'Jet' 
+    },
+    // Gravimétrico = EGM96 + AAL (valores variables ~700-1200 m)
+    gravimetrico: { 
+      data: resultados.N_grav, 
+      titulo: `Geoide Gravimétrico – ${departamentoNombre}`, 
+      unidad: 'N (m)', 
+      color: 'Jet' 
+    },
+    diferencias: { 
+      data: resultados.N_dif, 
+      titulo: `Diferencias (Grav - EGM96) – ${departamentoNombre}`, 
+      unidad: 'ΔN (m)', 
+      color: 'RdBu' 
+    },
+    hibrido: { 
+      data: resultados.N_hib, 
+      titulo: `Geoide Híbrido – ${departamentoNombre}`, 
+      unidad: 'N (m)', 
+      color: 'Jet' 
+    },
+    topografia: { 
+      data: resultados.H, 
+      titulo: `Topografía H – ${departamentoNombre}`, 
+      unidad: 'H (m)', 
+      color: 'Earth' 
+    },
+    aal: { 
+      data: resultados.AAL, 
+      titulo: `Anomalía Aire Libre – ${departamentoNombre}`, 
+      unidad: 'AAL (mGal)', 
+      color: 'Portland' 
+    }
+  };
+  
+  return mapas[mapaActual] || mapas.egm96;
+}
+
+function generarMapa() {
+  if (!resultados) return;
+  
+  const info = getDatosActuales();
+  const viewType = document.getElementById('viewType').value;
+  const colorScale = document.getElementById('colorScale').value;
+  const showContours = document.getElementById('showContours').checked;
+  const smoothLevel = parseInt(document.getElementById('smoothing').value);
+  
+  document.getElementById('plotTitle').textContent = info.titulo;
+  
+  let data = info.data;
+  if (viewType === '3d' && smoothLevel > 0) {
+    data = aplicarSuavizado(data, smoothLevel);
+  }
+  
+  const cs = (mapaActual === 'diferencias') ? 'RdBu' : colorScale;
+  
+  if (viewType === '2d') {
+    generarMapa2D(data, info.titulo, info.unidad, cs, showContours, 'plot');
+  } else {
+    generarMapa3D(data, info.titulo, info.unidad, cs, 'plot');
+  }
+  
+  const stats = calcStats(info.data);
+  document.getElementById('statMin').textContent = stats.min.toFixed(3);
+  document.getElementById('statMax').textContent = stats.max.toFixed(3);
+  document.getElementById('statMean').textContent = stats.mean.toFixed(3);
+  document.getElementById('statStd').textContent = stats.std.toFixed(3);
+  document.getElementById('statRMS').textContent = stats.rms.toFixed(3);
+}
+
+function generarMapa2D(z, titulo, unidad, colorScale, showContours, divId) {
+  const trace = {
+    type: 'contour',
+    x: resultados.lons,
+    y: resultados.lats,
+    z: z,
+    colorscale: colorScale,
+    colorbar: { 
+      title: unidad, 
+      titleside: 'right', 
+      thickness: 18 
+    },
+    contours: {
+      coloring: 'heatmap',
+      showlabels: showContours,
+      labelfont: { size: 9, color: '#1e293b' }
+    },
+    line: { 
+      width: showContours ? 0.5 : 0, 
+      color: 'rgba(0,0,0,0.4)' 
+    },
+    ncontours: 25
+  };
+  
+  const layout = {
+    title: { text: titulo, font: { size: 14 } },
+    xaxis: { 
+      title: 'Longitud (°)', 
+      tickformat: '.1f',
+      autorange: true
+    },
+    yaxis: { 
+      title: 'Latitud (°)', 
+      scaleanchor: 'x', 
+      tickformat: '.1f',
+      autorange: true
+    },
+    autosize: true,
+    margin: { l: 60, r: 50, t: 50, b: 50 },
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0.05)',
+    font: { color: '#e2e8f0' }
+  };
+  
+  Plotly.newPlot(divId, [trace], layout, { responsive: true });
+}
+
+function generarMapa3D(z, titulo, unidad, colorScale, divId) {
+  const trace = {
+    type: 'surface',
+    x: resultados.lons,
+    y: resultados.lats,
+    z: z,
+    colorscale: colorScale,
+    colorbar: { title: unidad },
+    lighting: { ambient: 0.6, diffuse: 0.7, specular: 0.2 },
+    lightposition: { x: 1000, y: 1000, z: 1000 }
+  };
+  
+  const layout = {
+    title: { text: titulo + ' (3D)', font: { size: 14 } },
+    scene: {
+      xaxis: { title: 'Lon (°)' },
+      yaxis: { title: 'Lat (°)' },
+      zaxis: { title: unidad },
+      camera: { eye: { x: 1.4, y: -1.4, z: 0.7 } },
+      aspectratio: { x: 1.2, y: 1, z: 0.5 }
+    },
+    autosize: true,
+    margin: { l: 0, r: 0, t: 50, b: 0 },
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    font: { color: '#e2e8f0' }
+  };
+  
+  Plotly.newPlot(divId, [trace], layout, { responsive: true });
+}
+
+/**
+ * GALERÍA - Orden según documento PDF
+ */
+function generarGaleria() {
+  if (!resultados) return;
+  
+  document.getElementById('gallerySection').classList.remove('hidden');
+  
+  // Orden según el documento PDF:
+  // 1. Ondulación EGM96 (suave)
+  generarMapa2D(resultados.N_egm96, `1. Ondulación geoidal N (EGM96) – ${departamentoNombre}`, 'N (m)', 'Jet', true, 'plot1');
+  // 2. Geoide gravimétrico (con anomalías)
+  generarMapa2D(resultados.N_grav, `2. Geoide gravimétrico N – ${departamentoNombre}`, 'N_grav (m)', 'Jet', true, 'plot2');
+  // 3. Diferencias
+  generarMapa2D(resultados.N_dif, `3. Diferencias (N_grav - N_EGM96) – ${departamentoNombre}`, 'ΔN (m)', 'RdBu', true, 'plot3');
+  // 4. Geoide híbrido
+  generarMapa2D(resultados.N_hib, `4. Geoide híbrido N – ${departamentoNombre}`, 'N_híbrido (m)', 'Jet', true, 'plot4');
+  
+  addLog('\n🖼️ Galería de 4 mapas generada (v2.4)');
+}
+
+function generarPerfiles() {
+  if (!resultados) return;
+  
+  document.getElementById('profileSection').classList.remove('hidden');
+  
+  const { lats, lons, N_egm96, N_grav, N_hib } = resultados;
+  
+  const idxLat = Math.floor(lats.length / 2);
+  const latPerfil = lats[idxLat];
+  
+  Plotly.newPlot('profileEW', [
+    { x: lons, y: N_hib[idxLat], name: 'Híbrido', line: { color: '#8b5cf6', width: 2.5 } },
+    { x: lons, y: N_egm96[idxLat], name: 'EGM96', line: { color: '#ef4444', width: 2, dash: 'dash' } },
+    { x: lons, y: N_grav[idxLat], name: 'Gravimétrico', line: { color: '#22c55e', width: 2, dash: 'dot' } }
+  ], {
+    title: { text: `Perfil Este-Oeste (Lat = ${latPerfil.toFixed(2)}°)`, font: { size: 13 } },
+    xaxis: { title: 'Longitud (°)' },
+    yaxis: { title: 'N (m)' },
+    legend: { x: 0, y: 1 },
+    margin: { l: 50, r: 30, t: 50, b: 50 },
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0.05)',
+    font: { color: '#e2e8f0' }
+  }, { responsive: true });
+  
+  const idxLon = Math.floor(lons.length / 2);
+  const lonPerfil = lons[idxLon];
+  
+  const perfilNS_hib = lats.map((_, i) => N_hib[i][idxLon]);
+  const perfilNS_egm = lats.map((_, i) => N_egm96[i][idxLon]);
+  const perfilNS_grav = lats.map((_, i) => N_grav[i][idxLon]);
+  
+  Plotly.newPlot('profileNS', [
+    { x: lats, y: perfilNS_hib, name: 'Híbrido', line: { color: '#8b5cf6', width: 2.5 } },
+    { x: lats, y: perfilNS_egm, name: 'EGM96', line: { color: '#ef4444', width: 2, dash: 'dash' } },
+    { x: lats, y: perfilNS_grav, name: 'Gravimétrico', line: { color: '#22c55e', width: 2, dash: 'dot' } }
+  ], {
+    title: { text: `Perfil Norte-Sur (Lon = ${lonPerfil.toFixed(2)}°)`, font: { size: 13 } },
+    xaxis: { title: 'Latitud (°)' },
+    yaxis: { title: 'N (m)' },
+    legend: { x: 0, y: 1 },
+    margin: { l: 50, r: 30, t: 50, b: 50 },
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0.05)',
+    font: { color: '#e2e8f0' }
+  }, { responsive: true });
+  
+  addLog('\n📈 Perfiles geoidales generados');
+}
+
+function generarHistogramas() {
+  if (!resultados) return;
+  
+  document.getElementById('histSection').classList.remove('hidden');
+  
+  Plotly.newPlot('hist1', [
+    { x: resultados.N_egm96.flat(), type: 'histogram', name: 'EGM96', marker: { color: 'rgba(59,130,246,0.7)' }, nbinsx: 40 },
+    { x: resultados.N_hib.flat(), type: 'histogram', name: 'Híbrido', marker: { color: 'rgba(139,92,246,0.7)' }, nbinsx: 40 }
+  ], {
+    title: { text: 'Distribución de Ondulaciones', font: { size: 13 } },
+    xaxis: { title: 'N (m)' },
+    yaxis: { title: 'Frecuencia' },
+    barmode: 'overlay',
+    legend: { x: 0.7, y: 0.95 },
+    margin: { l: 50, r: 30, t: 50, b: 50 },
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0.05)',
+    font: { color: '#e2e8f0' }
+  }, { responsive: true });
+  
+  Plotly.newPlot('hist2', [
+    { x: resultados.N_dif.flat(), type: 'histogram', name: 'Diferencias', marker: { color: 'rgba(34,197,94,0.7)' }, nbinsx: 40 }
+  ], {
+    title: { text: 'Distribución de Diferencias', font: { size: 13 } },
+    xaxis: { title: 'ΔN (m)' },
+    yaxis: { title: 'Frecuencia' },
+    margin: { l: 50, r: 30, t: 50, b: 50 },
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0.05)',
+    font: { color: '#e2e8f0' }
+  }, { responsive: true });
+  
+  addLog('\n📊 Histogramas generados');
+}
+
+function descargarDatos() {
+  if (!resultados) return;
+  
+  const info = getDatosActuales();
+  const data = info.data;
+  
+  let contenido = `# Modelo Geoidal EGM96 - ${departamentoNombre}\n`;
+  contenido += `# Tipo: ${info.titulo}\n`;
+  contenido += `# L = ${GEO.L_max}\n`;
+  contenido += `# Fecha: ${new Date().toISOString()}\n`;
+  contenido += `# Lon Lat Valor\n`;
+  
+  for (let i = 0; i < resultados.lats.length; i++) {
+    for (let j = 0; j < resultados.lons.length; j++) {
+      contenido += `${resultados.lons[j].toFixed(6)} ${resultados.lats[i].toFixed(6)} ${data[i][j].toFixed(6)}\n`;
+    }
+  }
+  
+  const slug = departamentoNombre.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  const blob = new Blob([contenido], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `geoide_${slug}_${mapaActual}.xyz`;
+  a.click();
+  URL.revokeObjectURL(url);
+  
+  addLog(`\n📥 Descargado: geoide_${slug}_${mapaActual}.xyz`);
+}
+
+// ============================================================================
+// EVENTOS
+// ============================================================================
+
+document.getElementById('btnProcesar').addEventListener('click', function() {
+  mostrarProgreso(0, 'Iniciando...');
+  document.getElementById('progressContainer').classList.remove('hidden');
+  
+  setTimeout(() => {
+    try {
+      calcularModelos();
+      
+      document.getElementById('controlPanel').classList.remove('hidden');
+      document.getElementById('plotSection').classList.remove('hidden');
+      document.getElementById('statsSection').classList.remove('hidden');
+      document.getElementById('infoCoefs').textContent = coefEGM.count;
+      document.getElementById('infoPuntos').textContent = datosMeta.length;
+      
+      selectMap('egm96');
+      generarMapa();
+      
+      setTimeout(() => {
+        document.getElementById('progressContainer').classList.add('hidden');
+      }, 1500);
+      
+    } catch (error) {
+      console.error(error);
+      addLog('\n❌ ERROR: ' + error.message);
+      alert('Error: ' + error.message);
+    }
+  }, 100);
+});
+
+document.getElementById('themeToggle').addEventListener('click', () => {
+  const html = document.documentElement;
+  const icon = document.getElementById('themeIcon');
+  if (html.getAttribute('data-theme') === 'light') {
+    html.removeAttribute('data-theme');
+    icon.textContent = '🌙';
+  } else {
+    html.setAttribute('data-theme', 'light');
+    icon.textContent = '☀️';
+  }
+});
+
+window.addEventListener('load', () => {
+  setupUploadZones();
+  console.log('🌍 Aplicación EGM96 v2.4 cargada - Mapas corregidos');
+});
+</script>
+
+</body>
+</html>

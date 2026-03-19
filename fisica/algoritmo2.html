@@ -1,0 +1,1641 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Potencial Gravitacional · Esfera Homogénea</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/three@0.134.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1"></script>
+<style>
+  :root { 
+    --bg-primary:#01040a;
+    --bg-secondary:#0a0e1a; 
+    --text-primary:#f8fafc;
+    --text-secondary:#94a3b8;
+    --accent:#10b981;
+    --accent-hover:#0d9488;
+    --border:rgba(255,255,255,0.12);
+  }
+
+  [data-theme="light"] {
+    --bg-primary:#f8fafc;
+    --bg-secondary:#e2e8f0;
+    --text-primary:#0f172a;
+    --text-secondary:#475569;
+    --accent:#059669;
+    --accent-hover:#047857;
+    --border:rgba(0,0,0,0.1);
+  }
+
+  body {
+    background: transparent !important;
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, sans-serif;
+    overflow-x: hidden;
+  }
+
+  .card {
+    background: rgba(20, 25, 40, 0.15) !important;
+    backdrop-filter: blur(20px) saturate(180%) contrast(110%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%) contrast(110%);
+    border: 1px solid var(--border);
+    box-shadow: 0 0 25px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+  }
+
+  .card:hover {
+    background: rgba(30, 40, 60, 0.25) !important;
+    border-color: rgba(255,255,255,0.25);
+    box-shadow: 0 0 30px rgba(0,255,200,0.1);
+  }
+
+  [data-theme="light"] .card {
+    background: rgba(255,255,255,0.25) !important;
+    backdrop-filter: blur(15px) saturate(150%);
+    -webkit-backdrop-filter: blur(15px) saturate(150%);
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .btn {
+    transition: all 0.2s ease;
+    font-weight: 600;
+  }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4); }
+
+  select, input[type="number"] {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text-primary);
+    padding: 8px 12px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  input[type="number"]:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(16,185,129,0.25);
+  }
+
+  .chip {
+    background: rgba(16,185,129,0.1);
+    border: 1px solid rgba(16,185,129,0.3);
+    color: #6ee7b7;
+    border-radius: 9999px;
+    font-weight: 600;
+    padding: 4px 12px;
+  }
+
+  .status-badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    animation: fadeIn 0.3s ease;
+  }
+  .status-interior { background: rgba(34,211,238,0.2); color:#22d3ee; border:1px solid rgba(34,211,238,0.4); }
+  .status-exterior { background: rgba(239,68,68,0.2); color:#ef4444; border:1px solid rgba(239,68,68,0.4); }
+  .status-surface { background: rgba(251,191,36,0.2); color:#fbbf24; border:1px solid rgba(251,191,36,0.4); }
+
+  @keyframes fadeIn { from {opacity:0; transform:translateY(-10px);} to {opacity:1; transform:translateY(0);} }
+  
+  @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+  @keyframes rainbow { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(360deg); } }
+  
+  .easter-egg-active {
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  body::before {
+    content:"";
+    position:fixed;
+    top:0; left:0; width:100%; height:100%;
+    background:
+      radial-gradient(circle at 20% 30%, rgba(16,185,129,0.1) 0%, transparent 60%),
+      radial-gradient(circle at 80% 70%, rgba(59,130,246,0.1) 0%, transparent 60%);
+    z-index:-1;
+  }
+  
+  #easterEggNotification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    padding: 20px 30px;
+    background: linear-gradient(135deg, #10b981, #3b82f6);
+    border-radius: 15px;
+    box-shadow: 0 10px 40px rgba(16, 185, 129, 0.4);
+    transform: translateX(400px);
+    transition: transform 0.5s ease;
+    animation: rainbow 3s linear infinite;
+  }
+  
+  #easterEggNotification.show {
+    transform: translateX(0);
+  }
+</style>
+</head>
+<body class="min-h-screen p-4 md:p-6">
+  <div id="easterEggNotification">
+    <div class="text-white font-bold text-lg">🎉 ¡EASTER EGG DESBLOQUEADO!</div>
+    <div class="text-white text-sm mt-1">Planetas épicos disponibles 🚀</div>
+  </div>
+
+  <div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <header class="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
+      <div>
+        <h1 class="text-3xl md:text-4xl font-bold gradient-text mb-2" id="mainTitle">
+          🌍 Esfera Homogénea · Potencial Gravitacional
+        </h1>
+        <p class="text-sm text-secondary">Simulador físico para distribuciones uniformes de masa</p>
+      </div>
+      <button id="themeToggle" class="px-4 py-2 rounded-xl card btn" aria-label="Cambiar tema">
+        <span id="themeIcon">🌙</span>
+      </button>
+    </header>
+
+    <!-- Panel de Control Principal -->
+    <section class="card p-6 rounded-2xl shadow-2xl mb-8">
+      <h2 class="text-2xl font-bold text-accent mb-6 flex items-center gap-2">
+        ⚙️ Configuración del Sistema
+      </h2>
+
+      <!-- Selección de Cuerpo Celeste -->
+      <div class="mb-6">
+        <label class="block font-semibold mb-3 text-lg">🪐 Seleccione el cuerpo celeste:</label>
+        <div class="flex flex-wrap gap-3" id="planetButtons">
+          <button onclick="selectPlanet('earth')" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl btn flex items-center gap-2">
+            <span>🌍</span> Tierra
+          </button>
+          <button onclick="selectPlanet('moon')" class="px-6 py-3 bg-gray-600 hover:bg-gray-700 rounded-xl btn flex items-center gap-2">
+            <span>🌙</span> Luna
+          </button>
+          <button onclick="selectPlanet('mars')" class="px-6 py-3 bg-red-600 hover:bg-red-700 rounded-xl btn flex items-center gap-2">
+            <span>🔴</span> Marte
+          </button>
+          <button onclick="selectPlanet('custom')" class="px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-xl btn flex items-center gap-2">
+            <span>⚙️</span> Personalizado
+          </button>
+        </div>
+      </div>
+
+      <!-- Sistema Geodésico (solo Tierra) -->
+      <div id="sistemasTierra" class="card p-5 mb-6 hidden border-2 border-blue-500/30">
+        <label class="block font-semibold mb-3 text-lg">🌎 Sistema de Referencia Geodésico:</label>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+          <label class="flex items-center gap-3 p-3 rounded-lg hover:bg-opacity-50 cursor-pointer transition card">
+            <input type="radio" name="sistemaRef" value="WGS84" checked class="w-4 h-4">
+            <div>
+              <div class="font-semibold">WGS84</div>
+              <div class="text-xs text-secondary">World Geodetic System 1984</div>
+            </div>
+          </label>
+          <label class="flex items-center gap-3 p-3 rounded-lg hover:bg-opacity-50 cursor-pointer transition card">
+            <input type="radio" name="sistemaRef" value="GRS80" class="w-4 h-4">
+            <div>
+              <div class="font-semibold">GRS80</div>
+              <div class="text-xs text-secondary">Geodetic Reference System 1980</div>
+            </div>
+          </label>
+          <label class="flex items-center gap-3 p-3 rounded-lg hover:bg-opacity-50 cursor-pointer transition card">
+            <input type="radio" name="sistemaRef" value="IERS2010" class="w-4 h-4">
+            <div>
+              <div class="font-semibold">IERS 2010</div>
+              <div class="text-xs text-secondary">International Earth Rotation Service</div>
+            </div>
+          </label>
+        </div>
+        <div class="chip text-center">
+          <span id="sistemaInfo">—</span>
+        </div>
+      </div>
+
+      <!-- Teoría -->
+      <div class="card p-5 mb-6 border-2 border-accent/30">
+        <h3 class="font-bold text-lg mb-3 text-accent">📚 Teoría de la Esfera Homogénea Sólida</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div>
+            <p class="font-semibold mb-2">Interior (r &lt; R):</p>
+            <ul class="space-y-1 text-secondary">
+              <li>• <strong>V(r) = -GM/(2R³)(3R² - r²)</strong></li>
+              <li>• <strong>g(r) = GMr/R³</strong> (lineal)</li>
+              <li>• Campo proporcional a r</li>
+              <li>• Densidad ρ = 3M/(4πR³)</li>
+            </ul>
+          </div>
+          <div>
+            <p class="font-semibold mb-2">Exterior (r ≥ R):</p>
+            <ul class="space-y-1 text-secondary">
+              <li>• <strong>V(r) = -GM/r</strong></li>
+              <li>• <strong>|g(r)| = GM/r²</strong></li>
+              <li>• Como masa puntual en r=0</li>
+            </ul>
+          </div>
+        </div>
+        <div class="mt-3 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+          <p class="text-sm"><strong>✓ Continuidad:</strong> Tanto V como g son continuos en r = R. No hay discontinuidades.</p>
+        </div>
+      </div>
+
+      <!-- Parámetros -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <!-- Masa -->
+        <div class="card p-5 rounded-xl">
+          <label class="block font-semibold mb-3 text-lg">⚖️ Masa Total M</label>
+          <input id="M" type="number" value="5.972e24" min="1e20" max="1e30" step="1e23" 
+                 class="input-field w-full px-4 py-3 rounded-lg text-lg font-mono" 
+                 placeholder="5.972e24">
+          <div class="mt-2 text-xs text-secondary">
+            <p>Rango: 10²⁰ - 10³⁰ kg</p>
+            <p class="mt-1">Tierra: ~5.972×10²⁴ kg</p>
+          </div>
+        </div>
+
+        <!-- Radio R -->
+        <div class="card p-5 rounded-xl">
+          <label class="block font-semibold mb-3 text-lg">📏 Radio de la Esfera R</label>
+          <select id="R_mode" class="input-field w-full px-4 py-2 rounded-lg mb-3">
+            <option value="value">Valor numérico (m)</option>
+            <option value="coords">Coordenadas (xR, yR, zR)</option>
+          </select>
+          <div id="R_value_block">
+            <input id="R" type="number" value="6.371e6" min="1e5" max="1e9" step="1e5" 
+                   class="input-field w-full px-4 py-3 rounded-lg font-mono" 
+                   placeholder="6.371e6">
+            <div class="mt-2 text-xs text-secondary">
+              <p>Rango: 10⁵ - 10⁹ m</p>
+              <p>Tierra: ~6.371×10⁶ m</p>
+            </div>
+          </div>
+          <div id="R_coords_block" class="grid grid-cols-3 gap-2 hidden">
+            <input id="Rx" type="number" value="6.371e6" class="input-field px-2 py-2 rounded-lg font-mono text-sm" placeholder="xR">
+            <input id="Ry" type="number" value="0" class="input-field px-2 py-2 rounded-lg font-mono text-sm" placeholder="yR">
+            <input id="Rz" type="number" value="0" class="input-field px-2 py-2 rounded-lg font-mono text-sm" placeholder="zR">
+          </div>
+        </div>
+
+        <!-- Distancia r -->
+        <div class="card p-5 rounded-xl">
+          <label class="block font-semibold mb-3 text-lg">📍 Punto P (distancia r)</label>
+          <select id="r_mode" class="input-field w-full px-4 py-2 rounded-lg mb-3">
+            <option value="value">Valor numérico (m)</option>
+            <option value="ratio">Relación r/R (slider)</option>
+            <option value="coords">Coordenadas (x, y, z)</option>
+          </select>
+          <div id="r_value_block">
+            <input id="r" type="number" value="1.0e7" min="0" max="1e10" step="1e5" 
+                   class="input-field w-full px-4 py-3 rounded-lg font-mono" 
+                   placeholder="1.0e7">
+            <div class="mt-2 text-xs text-secondary">
+              <p>r = 0: centro de la esfera</p>
+              <p>r &lt; R: interior</p>
+              <p>r ≥ R: exterior</p>
+            </div>
+          </div>
+          <div id="r_ratio_block" class="hidden">
+            <input id="rRatio" type="range" min="0" max="5" step="0.01" value="1.57" 
+                   class="w-full h-3 rounded-lg cursor-pointer">
+            <div class="text-center mt-2 font-mono text-lg font-bold" id="rRatioLabel">r/R = 1.57</div>
+            <div class="mt-2 text-xs text-secondary text-center">
+              <p>0: centro | 1: superficie | &gt;1: exterior</p>
+            </div>
+          </div>
+          <div id="r_coords_block" class="grid grid-cols-3 gap-2 hidden">
+            <input id="Px" type="number" value="9.0e6" class="input-field px-2 py-2 rounded-lg font-mono text-sm" placeholder="x">
+            <input id="Py" type="number" value="0" class="input-field px-2 py-2 rounded-lg font-mono text-sm" placeholder="y">
+            <input id="Pz" type="number" value="0" class="input-field px-2 py-2 rounded-lg font-mono text-sm" placeholder="z">
+          </div>
+        </div>
+      </div>
+
+      <!-- Botones de Acción -->
+      <div class="flex flex-wrap gap-3 items-center">
+        <button id="btnCalcular" class="px-8 py-3 bg-accent hover:bg-accent-hover rounded-xl font-bold btn text-white">
+          🔬 Calcular
+        </button>
+        <button id="btnGraficar" class="px-8 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-bold btn text-white">
+          📊 Graficar
+        </button>
+        <button id="btnReset" class="px-8 py-3 bg-gray-600 hover:bg-gray-700 rounded-xl font-bold btn text-white">
+          🔄 Reiniciar
+        </button>
+        <span id="msg" class="text-sm font-semibold ml-2"></span>
+      </div>
+    </section>
+
+    <!-- Resultados -->
+    <section class="card p-6 rounded-2xl shadow-2xl mb-8">
+      <h2 class="text-2xl font-bold text-accent mb-6">📊 Resultados del Análisis</h2>
+      
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Resultados Numéricos -->
+        <div class="card p-5 rounded-xl border-2 border-accent/30">
+          <h3 class="font-bold text-xl mb-4 flex items-center gap-2">
+            <span>🔢</span> Valores Calculados
+          </h3>
+          
+          <div class="space-y-3">
+            <div class="flex justify-between items-center p-3 rounded-lg" style="background: rgba(15, 23, 42, 0.4)">
+              <span class="font-semibold">Cuerpo:</span>
+              <span id="modelo_out" class="font-mono">—</span>
+            </div>
+            <div class="flex justify-between items-center p-3 rounded-lg" style="background: rgba(15, 23, 42, 0.4)">
+              <span class="font-semibold">Masa M:</span>
+              <span id="M_out" class="font-mono">—</span>
+            </div>
+            <div class="flex justify-between items-center p-3 rounded-lg" style="background: rgba(15, 23, 42, 0.4)">
+              <span class="font-semibold">Radio R:</span>
+              <span id="R_out" class="font-mono">—</span>
+            </div>
+            <div class="flex justify-between items-center p-3 rounded-lg" style="background: rgba(15, 23, 42, 0.4)">
+              <span class="font-semibold">Densidad ρ:</span>
+              <span id="rho_out" class="font-mono">—</span>
+            </div>
+            <div class="flex justify-between items-center p-3 rounded-lg" style="background: rgba(15, 23, 42, 0.4)">
+              <span class="font-semibold">Distancia r:</span>
+              <span id="r_out" class="font-mono">—</span>
+            </div>
+            <div class="flex justify-between items-center p-3 rounded-lg" style="background: rgba(15, 23, 42, 0.4)">
+              <span class="font-semibold">Relación r/R:</span>
+              <span id="ratio_out" class="font-mono">—</span>
+            </div>
+            <div class="flex justify-between items-center p-3 rounded-lg" style="background: rgba(15, 23, 42, 0.4)">
+              <span class="font-semibold">Ubicación:</span>
+              <span id="zona_out">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resultados Físicos -->
+        <div class="card p-5 rounded-xl border-2 border-blue-500/30">
+          <h3 class="font-bold text-xl mb-4 flex items-center gap-2">
+            <span>⚡</span> Magnitudes Físicas
+          </h3>
+          <div class="space-y-3">
+            <div class="p-4 rounded-lg border-2 border-accent/40" style="background: rgba(16, 185, 129, 0.15)">
+              <div class="text-sm text-secondary mb-1">Potencial Gravitacional V(r)</div>
+              <div class="text-2xl font-bold font-mono" id="V_out">—</div>
+              <div class="text-xs text-secondary mt-1">J/kg (Joules por kilogramo)</div>
+            </div>
+            <div class="p-4 rounded-lg border-2 border-red-500/40" style="background: rgba(239, 68, 68, 0.15)">
+              <div class="text-sm text-secondary mb-1">Aceleración Gravitacional |g(r)|</div>
+              <div class="text-2xl font-bold font-mono" id="g_out">—</div>
+              <div class="text-xs text-secondary mt-1">m/s² (metros por segundo cuadrado)</div>
+            </div>
+            <div class="p-4 rounded-lg border-2 border-purple-500/40" style="background: rgba(168, 85, 247, 0.15)">
+              <div class="text-sm text-secondary mb-1">Autoenergía Gravitacional U</div>
+              <div class="text-xl font-bold font-mono" id="U_out">—</div>
+              <div class="text-xs text-secondary mt-1">U = -3GM²/(5R) en Joules</div>
+            </div>
+            <div class="p-3 rounded-lg text-sm" style="background: rgba(15, 23, 42, 0.4)">
+              <div class="font-semibold mb-1">✓ Análisis de Continuidad:</div>
+              <div id="cont_out" class="text-xs">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Visualización 2D -->
+    <section class="card p-6 rounded-2xl shadow-2xl mb-8">
+      <h2 class="text-2xl font-bold text-accent mb-4">📐 Visualización 2D - Corte Transversal</h2>
+      <div class="flex justify-center">
+        <canvas id="canvas2D" width="800" height="400" class="max-w-full"></canvas>
+      </div>
+    </section>
+
+    <!-- Visualización 3D -->
+    <section class="card p-6 rounded-2xl shadow-2xl mb-8">
+      <h2 class="text-2xl font-bold text-accent mb-4">🌐 Visualización 3D Interactiva</h2>
+      <div id="escena3d" class="w-full h-[600px] rounded-xl overflow-hidden relative">
+        <div id="controls3d" class="absolute bottom-4 left-4 card p-3 rounded-lg text-sm z-10">
+          <p class="font-semibold mb-1">🖱️ Controles:</p>
+          <p class="text-xs text-secondary">• Arrastrar: rotar</p>
+          <p class="text-xs text-secondary">• Scroll: zoom</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Gráficas -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <div class="card p-6 rounded-2xl shadow-2xl">
+        <h3 class="text-xl font-bold text-accent mb-4">📈 Potencial V(r)</h3>
+        <canvas id="graficoPotencial"></canvas>
+      </div>
+      <div class="card p-6 rounded-2xl shadow-2xl">
+        <h3 class="text-xl font-bold text-accent mb-4">🎯 Gravedad |g(r)|</h3>
+        <canvas id="graficoGravedad"></canvas>
+      </div>
+      <div class="card p-6 rounded-2xl shadow-2xl">
+        <h3 class="text-xl font-bold text-accent mb-4">📊 Normalizada g/g(R)</h3>
+        <canvas id="graficoGravedadNorm"></canvas>
+      </div>
+    </section>
+  </div>
+
+<script>
+(function(){
+  'use strict';
+
+  // 🎉 EASTER EGG: Konami Code
+  let konamiCode = [];
+  const konamiSequence = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+  let easterEggUnlocked = false;
+
+  document.addEventListener('keydown', (e) => {
+    konamiCode.push(e.key);
+    konamiCode = konamiCode.slice(-10);
+    
+    if (konamiCode.join(',') === konamiSequence.join(',') && !easterEggUnlocked) {
+      unlockEasterEgg();
+    }
+  });
+
+  function unlockEasterEgg() {
+    easterEggUnlocked = true;
+    
+    const notification = document.getElementById('easterEggNotification');
+    notification.classList.add('show');
+    
+    setTimeout(() => {
+      notification.classList.remove('show');
+    }, 5000);
+    
+    const planetButtons = document.getElementById('planetButtons');
+    
+    const jupiter = document.createElement('button');
+    jupiter.onclick = () => selectPlanet('jupiter');
+    jupiter.className = 'px-6 py-3 bg-orange-600 hover:bg-orange-700 rounded-xl btn flex items-center gap-2 easter-egg-active';
+    jupiter.innerHTML = '<span>🪐</span> Júpiter';
+    planetButtons.appendChild(jupiter);
+    
+    const sun = document.createElement('button');
+    sun.onclick = () => selectPlanet('sun');
+    sun.className = 'px-6 py-3 bg-yellow-500 hover:bg-yellow-600 rounded-xl btn flex items-center gap-2 easter-egg-active';
+    sun.innerHTML = '<span>☀️</span> Sol';
+    planetButtons.appendChild(sun);
+    
+    const blackhole = document.createElement('button');
+    blackhole.onclick = () => selectPlanet('blackhole');
+    blackhole.className = 'px-6 py-3 bg-black hover:bg-gray-900 rounded-xl btn flex items-center gap-2 easter-egg-active';
+    blackhole.innerHTML = '<span>🕳️</span> Agujero Negro';
+    planetButtons.appendChild(blackhole);
+    
+    CONFIG.PRESETS.jupiter = {
+      M: 1.898e27,
+      R: 6.9911e7,
+      label: 'Júpiter (¡ÉPICO!)',
+      color: 0xffa500
+    };
+    
+    CONFIG.PRESETS.sun = {
+      M: 1.989e30,
+      R: 6.96e8,
+      label: 'Sol (¡EXTREMO!)',
+      color: 0xffd700
+    };
+    
+    CONFIG.PRESETS.blackhole = {
+      M: 5.972e30,
+      R: 8.87e3,
+      label: 'Agujero Negro (¡LOCO!)',
+      color: 0x000000
+    };
+    
+    document.getElementById('mainTitle').style.animation = 'rainbow 3s linear infinite';
+  }
+
+  const CONFIG = {
+    G: 6.67430e-11,
+    TOLERANCIA: 1e-9,
+    
+    LIMITES: {
+      M: { min: 1e20, max: 1e31 },
+      R: { min: 1e3, max: 1e10 },
+      r: { min: 0, max: 1e11 }
+    },
+
+ PRESETS: {
+      earth: { 
+        M: 5.972e24, 
+        R: 6.371e6, 
+        label: 'Tierra',
+        color: 0x4a90e2,
+        texture: 'https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg'
+      },
+      moon: { 
+        M: 7.342e22, 
+        R: 1.7374e6, 
+        label: 'Luna',
+        color: 0x9ca3af,
+        texture: 'https://threejs.org/examples/textures/planets/moon_1024.jpg'
+      },
+      mars: { 
+        M: 6.4171e23, 
+        R: 3.3895e6, 
+        label: 'Marte',
+        color: 0xb45309,
+        texture: 'https://threejs.org/examples/textures/planets/mars_1024.jpg'
+      },
+      custom: {
+        M: 1e24,
+        R: 5e6,
+        label: 'Personalizado',
+        color: 0x8b5cf6
+      }
+    },
+
+    SISTEMAS_TIERRA: {
+      WGS84: {
+        M: 5.97219e24,
+        R: 6378137,
+        GM: 3.986004418e14,
+        label: 'WGS84 (GPS, navegación global)',
+        descripcion: 'M≈5.972×10²⁴ kg, R≈6.378×10⁶ m'
+      },
+      GRS80: {
+        M: 5.97220e24,
+        R: 6378137,
+        GM: 3.986005e14,
+        label: 'GRS80 (Geodesia de precisión)',
+        descripcion: 'M≈5.972×10²⁴ kg, R≈6.378×10⁶ m'
+      },
+      IERS2010: {
+        M: 5.9722e24,
+        R: 6378136.6,
+        GM: 3.986004418e14,
+        label: 'IERS 2010 (Más reciente)',
+        descripcion: 'M≈5.972×10²⁴ kg, R≈6.378×10⁶ m'
+      }
+    }
+  };
+
+
+  const hypot3 = (x, y, z) => Math.sqrt((x||0)**2 + (y||0)**2 + (z||0)**2);
+  
+  function formatScientific(value, precision = 3) {
+    if (value === 0) return '0';
+    return value.toExponential(precision);
+  }
+
+  function isValidNumber(val, limits) {
+    const n = parseFloat(val);
+    if (isNaN(n) || !isFinite(n)) return false;
+    if (limits) {
+      if (limits.min !== undefined && n < limits.min) return false;
+      if (limits.max !== undefined && n > limits.max) return false;
+    }
+    return true;
+  }
+
+  function debounce(fn, delay) {
+    let timer;
+    return (...args) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn(...args), delay);
+    };
+  }
+
+  function calcularEsferaSolida(M, R, r) {
+    const G = CONFIG.G;
+    const tol = CONFIG.TOLERANCIA;
+    
+    const rho = (3 * M) / (4 * Math.PI * R * R * R);
+    
+    let zona, V, g;
+    const ratio = r / R;
+    const esSuperficie = Math.abs(r - R) < tol * R;
+    const esInterior = r < (R - tol * R);
+    
+    if (esInterior) {
+      zona = 'Interior';
+      V = -(G * M / (2 * R * R * R)) * (3 * R * R - r * r);
+      g = (G * M * r) / (R * R * R);
+    } else if (esSuperficie) {
+      zona = 'Superficie';
+      V = -(G * M) / R;
+      g = (G * M) / (R * R);
+    } else {
+      zona = 'Exterior';
+      V = -(G * M) / r;
+      g = (G * M) / (r * r);
+    }
+
+    const U = -(3 * G * M * M) / (5 * R);
+
+    const V_interior_limite = -(G * M) / R;
+    const V_exterior_limite = -(G * M) / R;
+    const g_interior_limite = (G * M) / (R * R);
+    const g_exterior_limite = (G * M) / (R * R);
+    
+    const continuidad_V = Math.abs(V_interior_limite - V_exterior_limite) < tol * Math.abs(V_interior_limite);
+    const continuidad_g = Math.abs(g_interior_limite - g_exterior_limite) < tol * g_exterior_limite;
+
+    let mensaje_continuidad;
+    if (continuidad_V && continuidad_g) {
+      mensaje_continuidad = '✓ Potencial y campo son continuos en r=R. No hay discontinuidades.';
+    } else {
+      mensaje_continuidad = '⚠️ Error numérico detectado';
+    }
+
+    return {
+      V, g, zona, U, rho,
+      continuidad: mensaje_continuidad,
+      esInterior, esSuperficie,
+      esExterior: !esInterior && !esSuperficie,
+      ratio
+    };
+  }
+
+  let state = {
+    currentPlanet: 'earth',
+    currentSistema: 'WGS84',
+    M: 5.972e24,
+    R: 6.371e6,
+    r: 1.0e7,
+    resultados: null
+  };
+
+  const elementos = {
+    M: document.getElementById('M'),
+    R: document.getElementById('R'),
+    r: document.getElementById('r'),
+    R_mode: document.getElementById('R_mode'),
+    r_mode: document.getElementById('r_mode'),
+    Rx: document.getElementById('Rx'),
+    Ry: document.getElementById('Ry'),
+    Rz: document.getElementById('Rz'),
+    Px: document.getElementById('Px'),
+    Py: document.getElementById('Py'),
+    Pz: document.getElementById('Pz'),
+    rRatio: document.getElementById('rRatio'),
+    rRatioLabel: document.getElementById('rRatioLabel'),
+    R_value_block: document.getElementById('R_value_block'),
+    R_coords_block: document.getElementById('R_coords_block'),
+    r_value_block: document.getElementById('r_value_block'),
+    r_ratio_block: document.getElementById('r_ratio_block'),
+    r_coords_block: document.getElementById('r_coords_block'),
+    msg: document.getElementById('msg'),
+    sistemaInfo: document.getElementById('sistemaInfo'),
+    sistemasTierra: document.getElementById('sistemasTierra'),
+    btnCalcular: document.getElementById('btnCalcular'),
+    btnGraficar: document.getElementById('btnGraficar'),
+    btnReset: document.getElementById('btnReset')
+  };
+
+  function obtenerR() {
+    if (elementos.R_mode.value === 'value') {
+      return parseFloat(elementos.R.value);
+    } else {
+      return hypot3(
+        parseFloat(elementos.Rx.value),
+        parseFloat(elementos.Ry.value),
+        parseFloat(elementos.Rz.value)
+      );
+    }
+  }
+
+  function obtenerr(R) {
+    const mode = elementos.r_mode.value;
+    if (mode === 'value') {
+      return parseFloat(elementos.r.value);
+    } else if (mode === 'ratio') {
+      const ratio = parseFloat(elementos.rRatio.value);
+      return ratio * R;
+    } else {
+      return hypot3(
+        parseFloat(elementos.Px.value),
+        parseFloat(elementos.Py.value),
+        parseFloat(elementos.Pz.value)
+      );
+    }
+  }
+
+  function mostrarMensaje(texto, tipo = 'info') {
+    elementos.msg.textContent = texto;
+    elementos.msg.className = 'text-sm font-semibold ml-2 ';
+    if (tipo === 'error') {
+      elementos.msg.className += 'text-red-400';
+    } else if (tipo === 'success') {
+      elementos.msg.className += 'text-green-400';
+    } else if (tipo === 'warning') {
+      elementos.msg.className += 'text-yellow-400';
+    } else {
+      elementos.msg.className += 'text-blue-400';
+    }
+    
+    if (texto) {
+      setTimeout(() => { elementos.msg.textContent = ''; }, 4000);
+    }
+  }
+
+  function actualizarInfoSistema() {
+    if (state.currentPlanet !== 'earth') {
+      elementos.sistemaInfo.textContent = '—';
+      return;
+    }
+    const sistema = CONFIG.SISTEMAS_TIERRA[state.currentSistema];
+    elementos.sistemaInfo.textContent = `${sistema.label} · ${sistema.descripcion}`;
+  }
+
+  function aplicarSistemaInputs() {
+    if (state.currentPlanet !== 'earth') return;
+    const sistema = CONFIG.SISTEMAS_TIERRA[state.currentSistema];
+    elementos.M.value = sistema.M;
+    if (elementos.R_mode.value === 'value') {
+      elementos.R.value = sistema.R;
+    } else {
+      elementos.Rx.value = sistema.R;
+      elementos.Ry.value = 0;
+      elementos.Rz.value = 0;
+    }
+    state.M = sistema.M;
+    state.R = sistema.R;
+  }
+
+  function sincronizarRatioSlider() {
+    const R = obtenerR();
+    const ratio = parseFloat(elementos.rRatio.value);
+    if (R > 0 && isValidNumber(ratio, { min: 0, max: 5 })) {
+      const r = ratio * R;
+      elementos.r.value = formatScientific(r);
+      elementos.rRatioLabel.textContent = `r/R = ${ratio.toFixed(2)}`;
+      state.r = r;
+    }
+  }
+
+  function actualizarModosR() {
+    const isValue = elementos.R_mode.value === 'value';
+    elementos.R_value_block.classList.toggle('hidden', !isValue);
+    elementos.R_coords_block.classList.toggle('hidden', isValue);
+  }
+
+  function actualizarModosr() {
+    const mode = elementos.r_mode.value;
+    elementos.r_value_block.classList.toggle('hidden', mode !== 'value');
+    elementos.r_ratio_block.classList.toggle('hidden', mode !== 'ratio');
+    elementos.r_coords_block.classList.toggle('hidden', mode !== 'coords');
+    
+    if (mode === 'ratio') {
+      sincronizarRatioSlider();
+    }
+  }
+
+  function actualizarRatioLabel() {
+    const R = obtenerR();
+    const r = obtenerr(R);
+    if (R > 0) {
+      const ratio = r / R;
+      elementos.rRatioLabel.textContent = `r/R = ${ratio.toFixed(2)}`;
+      if (elementos.r_mode.value === 'ratio') {
+        elementos.rRatio.value = Math.max(0, Math.min(5, ratio));
+      }
+    }
+  }
+
+  function validarEntradas() {
+    const M = parseFloat(elementos.M.value);
+    const R = obtenerR();
+    const r = obtenerr(R);
+
+    if (!isValidNumber(M, CONFIG.LIMITES.M)) {
+      mostrarMensaje(`Masa inválida. Rango: ${formatScientific(CONFIG.LIMITES.M.min)} - ${formatScientific(CONFIG.LIMITES.M.max)} kg`, 'error');
+      return null;
+    }
+
+    if (!isValidNumber(R, CONFIG.LIMITES.R)) {
+      mostrarMensaje(`Radio inválido. Rango: ${formatScientific(CONFIG.LIMITES.R.min)} - ${formatScientific(CONFIG.LIMITES.R.max)} m`, 'error');
+      return null;
+    }
+
+    if (!isValidNumber(r, CONFIG.LIMITES.r)) {
+      mostrarMensaje(`Distancia r inválida. Debe ser ≥ 0`, 'error');
+      return null;
+    }
+
+    if (r > R * 10) {
+      mostrarMensaje(`Advertencia: r es muy grande (${(r/R).toFixed(1)}R). Resultados pueden ser poco representativos.`, 'warning');
+    }
+
+    return { M, R, r };
+  }
+
+  function actualizarResultados(M, R, r, resultados) {
+    const planeta = state.currentPlanet === 'earth' 
+      ? `Tierra · ${CONFIG.SISTEMAS_TIERRA[state.currentSistema].label}`
+      : CONFIG.PRESETS[state.currentPlanet].label;
+
+    document.getElementById('modelo_out').textContent = planeta;
+    document.getElementById('M_out').textContent = `${formatScientific(M)} kg`;
+    document.getElementById('R_out').textContent = `${formatScientific(R)} m`;
+    document.getElementById('rho_out').textContent = `${formatScientific(resultados.rho)} kg/m³`;
+    document.getElementById('r_out').textContent = `${formatScientific(r)} m`;
+    document.getElementById('ratio_out').textContent = resultados.ratio.toFixed(3);
+    
+    const zonaEl = document.getElementById('zona_out');
+    zonaEl.textContent = resultados.zona;
+    zonaEl.className = 'status-badge ';
+    if (resultados.esInterior) {
+      zonaEl.className += 'status-interior';
+    } else if (resultados.esSuperficie) {
+      zonaEl.className += 'status-surface';
+    } else {
+      zonaEl.className += 'status-exterior';
+    }
+
+    document.getElementById('V_out').textContent = formatScientific(resultados.V);
+    document.getElementById('g_out').textContent = formatScientific(resultados.g);
+    document.getElementById('U_out').textContent = formatScientific(resultados.U);
+    document.getElementById('cont_out').textContent = resultados.continuidad;
+  }
+
+  function calcularYRenderizar() {
+    const valores = validarEntradas();
+    if (!valores) return;
+
+    const { M, R, r } = valores;
+    const resultados = calcularEsferaSolida(M, R, r);
+    
+    state.M = M;
+    state.R = R;
+    state.r = r;
+    state.resultados = resultados;
+
+    actualizarResultados(M, R, r, resultados);
+    dibujar2D(R, r, resultados);
+    actualizar3D(R, r, resultados);
+    
+    mostrarMensaje('✓ Cálculo completado', 'success');
+  }
+
+  const calcularDebounced = debounce(calcularYRenderizar, 150);
+
+  let chartPot = null, chartGrav = null, chartGravNorm = null;
+
+  function graficarTodo() {
+    const valores = validarEntradas();
+    if (!valores) return;
+
+    const { M, R } = valores;
+    const maxRatio = 5;
+    const numPuntos = 500;
+    const step = maxRatio / numPuntos;
+
+    const labels = [];
+    const datosV = [];
+    const datosG = [];
+    const datosGnorm = [];
+
+    let gR = null;
+
+    for (let i = 0; i <= numPuntos; i++) {
+      const ratio = i * step;
+      const r = ratio * R;
+      const res = calcularEsferaSolida(M, R, r);
+      
+      labels.push(ratio.toFixed(2));
+      datosV.push(res.V);
+      datosG.push(res.g);
+
+      if (Math.abs(ratio - 1.0) < 0.01 && gR === null) {
+        gR = res.g;
+      }
+    }
+
+    if (gR === null || gR === 0) {
+      gR = CONFIG.G * M / (R * R);
+    }
+
+    for (let i = 0; i < datosG.length; i++) {
+      datosGnorm.push(datosG[i] / gR);
+    }
+
+    if (chartPot) chartPot.destroy();
+    const ctxPot = document.getElementById('graficoPotencial').getContext('2d');
+    chartPot = new Chart(ctxPot, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'V(r) [J/kg]',
+          data: datosV,
+          borderColor: '#10b981',
+          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+          borderWidth: 3,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: {
+            labels: { color: 'var(--text-primary)', font: { size: 12, weight: 'bold' } }
+          },
+          annotation: {
+            annotations: {
+              lineaR: {
+                type: 'line',
+                scaleID: 'x',
+                value: labels[Math.floor(numPuntos / maxRatio)],
+                borderColor: '#fbbf24',
+                borderWidth: 2,
+                borderDash: [6, 6],
+                label: {
+                  display: true,
+                  content: 'r = R',
+                  position: 'start',
+                  color: '#fbbf24',
+                  backgroundColor: 'rgba(0,0,0,0.7)',
+                  font: { size: 11, weight: 'bold' }
+                }
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            title: { display: true, text: 'r/R', color: 'var(--text-primary)', font: { size: 13, weight: 'bold' } },
+            ticks: { color: 'var(--text-secondary)', maxTicksLimit: 10 },
+            grid: { color: 'rgba(148, 163, 184, 0.1)' }
+          },
+          y: {
+            title: { display: true, text: 'V (J/kg)', color: 'var(--text-primary)', font: { size: 13, weight: 'bold' } },
+            ticks: { color: 'var(--text-secondary)', callback: (v) => formatScientific(v, 2) },
+            grid: { color: 'rgba(148, 163, 184, 0.1)' }
+          }
+        }
+      }
+    });
+
+    if (chartGrav) chartGrav.destroy();
+    const ctxGrav = document.getElementById('graficoGravedad').getContext('2d');
+    chartGrav = new Chart(ctxGrav, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: '|g(r)| [m/s²]',
+          data: datosG,
+          borderColor: '#ef4444',
+          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+          borderWidth: 3,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: {
+            labels: { color: 'var(--text-primary)', font: { size: 12, weight: 'bold' } }
+          },
+          annotation: {
+            annotations: {
+              lineaR: {
+                type: 'line',
+                scaleID: 'x',
+                value: labels[Math.floor(numPuntos / maxRatio)],
+                borderColor: '#fbbf24',
+                borderWidth: 2,
+                borderDash: [6, 6],
+                label: {
+                  display: true,
+                  content: 'r = R',
+                  position: 'start',
+                  color: '#fbbf24',
+                  backgroundColor: 'rgba(0,0,0,0.7)',
+                  font: { size: 11, weight: 'bold' }
+                }
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            title: { display: true, text: 'r/R', color: 'var(--text-primary)', font: { size: 13, weight: 'bold' } },
+            ticks: { color: 'var(--text-secondary)', maxTicksLimit: 10 },
+            grid: { color: 'rgba(148, 163, 184, 0.1)' }
+          },
+          y: {
+            title: { display: true, text: '|g| (m/s²)', color: 'var(--text-primary)', font: { size: 13, weight: 'bold' } },
+            ticks: { color: 'var(--text-secondary)', callback: (v) => formatScientific(v, 2) },
+            grid: { color: 'rgba(148, 163, 184, 0.1)' }
+          }
+        }
+      }
+    });
+
+    if (chartGravNorm) chartGravNorm.destroy();
+    const ctxNorm = document.getElementById('graficoGravedadNorm').getContext('2d');
+    chartGravNorm = new Chart(ctxNorm, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'g(r)/g(R)',
+          data: datosGnorm,
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          borderWidth: 3,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: {
+            labels: { color: 'var(--text-primary)', font: { size: 12, weight: 'bold' } }
+          },
+          annotation: {
+            annotations: {
+              lineaR: {
+                type: 'line',
+                scaleID: 'x',
+                value: labels[Math.floor(numPuntos / maxRatio)],
+                borderColor: '#fbbf24',
+                borderWidth: 2,
+                borderDash: [6, 6],
+                label: {
+                  display: true,
+                  content: 'r = R',
+                  position: 'start',
+                  color: '#fbbf24',
+                  backgroundColor: 'rgba(0,0,0,0.7)',
+                  font: { size: 11, weight: 'bold' }
+                }
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            title: { display: true, text: 'r/R', color: 'var(--text-primary)', font: { size: 13, weight: 'bold' } },
+            ticks: { color: 'var(--text-secondary)', maxTicksLimit: 10 },
+            grid: { color: 'rgba(148, 163, 184, 0.1)' }
+          },
+          y: {
+            title: { display: true, text: 'g(r)/g(R)', color: 'var(--text-primary)', font: { size: 13, weight: 'bold' } },
+            ticks: { color: 'var(--text-secondary)', callback: (v) => v.toFixed(2) },
+            grid: { color: 'rgba(148, 163, 184, 0.1)' }
+          }
+        }
+      }
+    });
+
+    mostrarMensaje('✓ Gráficas generadas', 'success');
+  }
+
+  const canvas2D = document.getElementById('canvas2D');
+  const ctx2D = canvas2D.getContext('2d');
+
+  function dibujarFlecha(ctx, x1, y1, x2, y2, color, grosor = 3) {
+    const headLen = 15;
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const angle = Math.atan2(dy, dx);
+
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = grosor;
+    
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6), y2 - headLen * Math.sin(angle - Math.PI / 6));
+    ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6), y2 - headLen * Math.sin(angle + Math.PI / 6));
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function dibujar2D(R, r, resultados) {
+    const W = canvas2D.width;
+    const H = canvas2D.height;
+    const cx = W / 2;
+    const cy = H / 2;
+
+    ctx2D.clearRect(0, 0, W, H);
+
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    ctx2D.fillStyle = isDark ? '#0f172a' : '#f1f5f9';
+    ctx2D.fillRect(0, 0, W, H);
+
+    const escalaR = Math.min(150, W / 6);
+    const ratio = r / R;
+    const escalar = Math.min(ratio, 3) * escalaR;
+
+    ctx2D.fillStyle = isDark ? 'rgba(74, 144, 226, 0.3)' : 'rgba(74, 144, 226, 0.5)';
+    ctx2D.beginPath();
+    ctx2D.arc(cx, cy, escalaR, 0, Math.PI * 2);
+    ctx2D.fill();
+
+    ctx2D.strokeStyle = '#10b981';
+    ctx2D.lineWidth = 4;
+    ctx2D.setLineDash([]);
+    ctx2D.beginPath();
+    ctx2D.arc(cx, cy, escalaR, 0, Math.PI * 2);
+    ctx2D.stroke();
+
+    ctx2D.fillStyle = isDark ? '#ffffff' : '#0f172a';
+    ctx2D.beginPath();
+    ctx2D.arc(cx, cy, 5, 0, Math.PI * 2);
+    ctx2D.fill();
+    ctx2D.fillStyle = isDark ? '#94a3b8' : '#475569';
+    ctx2D.font = 'bold 14px Inter, sans-serif';
+    ctx2D.fillText('O (centro)', cx + 12, cy - 8);
+
+    ctx2D.strokeStyle = isDark ? '#64748b' : '#94a3b8';
+    ctx2D.lineWidth = 2;
+    ctx2D.setLineDash([5, 5]);
+    ctx2D.beginPath();
+    ctx2D.moveTo(cx, cy);
+    ctx2D.lineTo(cx + escalaR, cy);
+    ctx2D.stroke();
+    ctx2D.setLineDash([]);
+    ctx2D.fillStyle = isDark ? '#94a3b8' : '#475569';
+    ctx2D.font = 'bold 16px Inter, sans-serif';
+    ctx2D.fillText('R', cx + escalaR / 2 - 8, cy - 10);
+
+    const Px = cx + escalar;
+    const Py = cy;
+    
+    let colorP;
+    if (resultados.esInterior) {
+      colorP = '#22d3ee';
+    } else if (resultados.esSuperficie) {
+      colorP = '#fbbf24';
+    } else {
+      colorP = '#ef4444';
+    }
+
+    ctx2D.fillStyle = colorP;
+    ctx2D.beginPath();
+    ctx2D.arc(Px, Py, 8, 0, Math.PI * 2);
+    ctx2D.fill();
+    ctx2D.fillStyle = isDark ? '#f1f5f9' : '#0f172a';
+    ctx2D.font = 'bold 16px Inter, sans-serif';
+    ctx2D.fillText('P', Px + 15, Py - 10);
+
+    if (ratio > 0.1) {
+      ctx2D.strokeStyle = colorP;
+      ctx2D.lineWidth = 2;
+      ctx2D.setLineDash([3, 3]);
+      ctx2D.beginPath();
+      ctx2D.moveTo(cx, cy);
+      ctx2D.lineTo(Px, Py);
+      ctx2D.stroke();
+      ctx2D.setLineDash([]);
+      ctx2D.fillStyle = colorP;
+      ctx2D.font = 'bold 14px Inter, sans-serif';
+      ctx2D.fillText('r', cx + escalar / 2 - 8, cy + 20);
+    }
+
+    if (resultados.esExterior && resultados.g > 0) {
+      const longitudFlecha = Math.min(120, escalaR * 0.8);
+      dibujarFlecha(ctx2D, Px, Py, Px - longitudFlecha, Py, '#ef4444', 3);
+      ctx2D.fillStyle = '#ef4444';
+      ctx2D.font = 'bold 16px Inter, sans-serif';
+      ctx2D.fillText('g⃗', Px - longitudFlecha / 2 - 10, Py - 15);
+    } else if (resultados.esInterior && resultados.g > 0) {
+      const longitudFlecha = Math.min(escalar * 0.6, 80);
+      if (longitudFlecha > 10) {
+        dibujarFlecha(ctx2D, Px, Py, Px - longitudFlecha, Py, '#22d3ee', 2);
+        ctx2D.fillStyle = '#22d3ee';
+        ctx2D.font = 'bold 14px Inter, sans-serif';
+        ctx2D.fillText('g⃗ ∝ r', Px - longitudFlecha / 2 - 15, Py - 15);
+      }
+    }
+
+    ctx2D.fillStyle = isDark ? '#94a3b8' : '#475569';
+    ctx2D.font = '13px Inter, sans-serif';
+    ctx2D.fillText(`Zona: ${resultados.zona}`, 20, H - 60);
+    ctx2D.fillText(`r/R = ${ratio.toFixed(3)}`, 20, H - 40);
+    ctx2D.fillText(`|g| = ${formatScientific(resultados.g)} m/s²`, 20, H - 20);
+  }
+
+ // ===================== VISUALIZACIÓN 3D CORREGIDA =====================
+let scene, camera, renderer, controls;
+let shellMesh, pointMesh, arrowHelper;
+let textureLoader;
+
+function inicializar3D() {
+  const container = document.getElementById('escena3d');
+  if (!container) return;
+
+  scene = new THREE.Scene();
+  const W = container.clientWidth;
+  const H = 600;
+
+  camera = new THREE.PerspectiveCamera(50, W / H, 0.1, 1000);
+  camera.position.set(3, 2.5, 4);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(W, H);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setClearColor(0x000000, 0);
+  container.appendChild(renderer.domElement);
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+  controls.enablePan = false;
+  controls.minDistance = 2;
+  controls.maxDistance = 10;
+
+  // Iluminación
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+  scene.add(ambientLight);
+
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  directionalLight.position.set(5, 5, 5);
+  scene.add(directionalLight);
+
+  const pointLight = new THREE.PointLight(0xffffff, 0.4);
+  pointLight.position.set(-5, 3, -5);
+  scene.add(pointLight);
+
+  // Fondo estrellado
+  const starGeometry = new THREE.SphereGeometry(80, 32, 32);
+  const starMaterial = new THREE.MeshBasicMaterial({
+    map: new THREE.TextureLoader().load('https://threejs.org/examples/textures/galaxy_starfield.png'),
+    side: THREE.BackSide
+  });
+  const starMesh = new THREE.Mesh(starGeometry, starMaterial);
+  scene.add(starMesh);
+
+  // Loader de texturas para planetas
+  textureLoader = new THREE.TextureLoader();
+
+  // Cascarón esférico (aplicaremos textura después)
+  const shellGeometry = new THREE.SphereGeometry(1, 64, 64);
+  const shellMaterial = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    metalness: 0.2,
+    roughness: 0.8,
+    transparent: true,
+    opacity: 0.98
+  });
+  shellMesh = new THREE.Mesh(shellGeometry, shellMaterial);
+  scene.add(shellMesh);
+
+  // Punto P
+  const pointGeometry = new THREE.SphereGeometry(0.06, 32, 32);
+  const pointMaterial = new THREE.MeshStandardMaterial({
+    color: 0x22d3ee,
+    emissive: 0x0088aa,
+    emissiveIntensity: 0.5
+  });
+  pointMesh = new THREE.Mesh(pointGeometry, pointMaterial);
+  scene.add(pointMesh);
+
+  // Flecha para campo gravitacional
+  const direction = new THREE.Vector3(-1, 0, 0);
+  const origin = new THREE.Vector3(0, 0, 0);
+  const length = 0.8;
+  const hex = 0xef4444;
+  arrowHelper = new THREE.ArrowHelper(direction, origin, length, hex, 0.15, 0.1);
+  arrowHelper.visible = false;
+  scene.add(arrowHelper);
+
+  window.addEventListener('resize', () => {
+    const w = container.clientWidth;
+    camera.aspect = w / H;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, H);
+  });
+
+  animar3D();
+}
+
+// ==== FUNCIÓN CRUCIAL QUE SIEMPRE APLICA LA TEXTURA CORRECTA ====
+function aplicarTexturaPlaneta(planetName) {
+  if (!shellMesh) return;
+
+  // URLs confiables de texturas
+  const planetTextures = {
+    earth: 'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r150/examples/textures/planets/earth_atmos_2048.jpg',
+    moon:  'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r150/examples/textures/planets/moon_1024.jpg',
+    mars:  'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r150/examples/textures/planets/mars_1k_color.jpg'
+  };
+
+  let color = 0xffffff;
+  let texturaURL = null;
+
+  if (planetName === 'earth' || planetName === 'moon' || planetName === 'mars') {
+    texturaURL = planetTextures[planetName];
+    color = 0xffffff;
+  } else {
+    color = 0x4a90e2; // Para personalizado, azul homogéneo
+    texturaURL = null;
+  }
+
+  // Libera textura anterior si existe
+  if (shellMesh.material.map) {
+    shellMesh.material.map.dispose();
+    shellMesh.material.map = null;
+  }
+
+  shellMesh.material.color.setHex(color);
+
+  if (texturaURL) {
+    textureLoader.load(
+      texturaURL,
+      function(texture) {
+        shellMesh.material.map = texture;
+        shellMesh.material.color.setHex(0xffffff);
+        shellMesh.material.needsUpdate = true;
+        // Para depuración visual:
+        // console.log("Textura aplicada:", texturaURL);
+      },
+      undefined,
+      function() {
+        // Si falla la textura, color sólido
+        shellMesh.material.map = null;
+        shellMesh.material.color.setHex(color);
+        shellMesh.material.needsUpdate = true;
+      }
+    );
+  } else {
+    shellMesh.material.map = null;
+    shellMesh.material.color.setHex(color);
+    shellMesh.material.needsUpdate = true;
+  }
+}
+
+// Animación 3D
+function animar3D() {
+  requestAnimationFrame(animar3D);
+  if (controls) controls.update();
+  if (renderer && scene && camera) {
+    renderer.render(scene, camera);
+  }
+}
+
+
+  function actualizar3D(R, r, resultados) {
+    if (!shellMesh || !pointMesh || !arrowHelper) return;
+
+    const ratio = r / R;
+    const posicionX = Math.min(4, Math.max(-4, ratio * 1.2));
+
+    pointMesh.position.set(posicionX, 0, 0);
+
+    if (resultados.esInterior) {
+      pointMesh.material.color.setHex(0x22d3ee);
+      pointMesh.material.emissive.setHex(0x0088aa);
+    } else if (resultados.esSuperficie) {
+      pointMesh.material.color.setHex(0xfbbf24);
+      pointMesh.material.emissive.setHex(0xf59e0b);
+    } else {
+      pointMesh.material.color.setHex(0xef4444);
+      pointMesh.material.emissive.setHex(0xdc2626);
+    }
+
+    if (resultados.g > 0 && (resultados.esExterior || resultados.esInterior)) {
+      const gR = CONFIG.G * state.M / (R * R);
+      const longitudFlecha = Math.min(1.2, 0.3 + (resultados.g / gR) * 0.6);
+      
+      arrowHelper.position.set(posicionX, 0, 0);
+      arrowHelper.setDirection(new THREE.Vector3(-1, 0, 0));
+      arrowHelper.setLength(longitudFlecha, 0.15, 0.1);
+      
+      if (resultados.esInterior) {
+        arrowHelper.line.material.color.setHex(0x22d3ee);
+        arrowHelper.cone.material.color.setHex(0x22d3ee);
+      } else {
+        arrowHelper.line.material.color.setHex(0xef4444);
+        arrowHelper.cone.material.color.setHex(0xef4444);
+      }
+      
+      arrowHelper.visible = true;
+    } else {
+      arrowHelper.visible = false;
+    }
+  }
+
+window.selectPlanet = function(planetName) {
+  state.currentPlanet = planetName;
+
+  elementos.sistemasTierra.classList.toggle('hidden', planetName !== 'earth');
+
+  const preset = CONFIG.PRESETS[planetName];
+
+  if (planetName === 'earth') {
+    aplicarSistemaInputs();
+    actualizarInfoSistema();
+  } else {
+    elementos.M.value = formatScientific(preset.M);
+    if (elementos.R_mode.value === 'value') {
+      elementos.R.value = formatScientific(preset.R);
+    } else {
+      elementos.Rx.value = formatScientific(preset.R);
+      elementos.Ry.value = 0;
+      elementos.Rz.value = 0;
+    }
+    state.M = preset.M;
+    state.R = preset.R;
+  }
+
+  // ✅ SIEMPRE APLICA LA TEXTURA CORRECTA SEGÚN PLANETA
+  aplicarTexturaPlaneta(planetName);
+
+  const R = obtenerR();
+  const rDefault = R * 1.5;
+
+  if (elementos.r_mode.value === 'ratio') {
+    elementos.rRatio.value = 1.5;
+    sincronizarRatioSlider();
+  } else if (elementos.r_mode.value === 'value') {
+    elementos.r.value = formatScientific(rDefault);
+  } else {
+    elementos.Px.value = formatScientific(rDefault);
+    elementos.Py.value = 0;
+    elementos.Pz.value = 0;
+  }
+
+  // ❌ NO VUELVAS A PONER SHELLMESH.COLOR AQUÍ: esto borra la textura
+  // if (shellMesh) {
+  //   shellMesh.material.color.setHex(preset.color);
+  // }
+
+  actualizarRatioLabel();
+  calcularYRenderizar();
+
+  mostrarMensaje(`✓ ${preset.label} seleccionado`, 'success');
+};
+
+
+  function vincularSistemasGeodesicos() {
+    const radios = document.querySelectorAll('input[name="sistemaRef"]');
+    radios.forEach(radio => {
+      radio.addEventListener('change', () => {
+        if (state.currentPlanet !== 'earth') return;
+        state.currentSistema = radio.value;
+        aplicarSistemaInputs();
+        actualizarInfoSistema();
+        actualizarRatioLabel();
+        calcularYRenderizar();
+        mostrarMensaje(`✓ Sistema ${CONFIG.SISTEMAS_TIERRA[state.currentSistema].label} aplicado`, 'success');
+      });
+    });
+  }
+
+  function reiniciar() {
+    state.currentPlanet = 'earth';
+    state.currentSistema = 'WGS84';
+    
+    elementos.R_mode.value = 'value';
+    elementos.r_mode.value = 'ratio';
+    
+    actualizarModosR();
+    actualizarModosr();
+    
+    selectPlanet('earth');
+    
+    elementos.rRatio.value = 1.5;
+    sincronizarRatioSlider();
+    
+    calcularYRenderizar();
+    graficarTodo();
+    
+    mostrarMensaje('✓ Simulador reiniciado', 'success');
+  }
+
+  function configurarTema() {
+    const themeToggle = document.getElementById('themeToggle');
+    const themeIcon = document.getElementById('themeIcon');
+    
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initialTheme = prefersDark ? 'dark' : 'light';
+    
+    document.documentElement.setAttribute('data-theme', initialTheme);
+    themeIcon.textContent = initialTheme === 'dark' ? '☀️' : '🌙';
+    
+    themeToggle.addEventListener('click', () => {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      
+      document.documentElement.setAttribute('data-theme', newTheme);
+      themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+      
+      if (state.resultados) {
+        dibujar2D(state.R, state.r, state.resultados);
+      }
+      
+      if (chartPot || chartGrav || chartGravNorm) {
+        graficarTodo();
+      }
+    });
+  }
+
+  function configurarEventListeners() {
+    elementos.M.addEventListener('input', calcularDebounced);
+    elementos.R.addEventListener('input', () => {
+      actualizarRatioLabel();
+      calcularDebounced();
+    });
+    elementos.r.addEventListener('input', () => {
+      actualizarRatioLabel();
+      calcularDebounced();
+    });
+
+    elementos.Rx.addEventListener('input', () => {
+      actualizarRatioLabel();
+      calcularDebounced();
+    });
+    elementos.Ry.addEventListener('input', () => {
+      actualizarRatioLabel();
+      calcularDebounced();
+    });
+    elementos.Rz.addEventListener('input', () => {
+      actualizarRatioLabel();
+      calcularDebounced();
+    });
+
+    elementos.Px.addEventListener('input', calcularDebounced);
+    elementos.Py.addEventListener('input', calcularDebounced);
+    elementos.Pz.addEventListener('input', calcularDebounced);
+
+    elementos.rRatio.addEventListener('input', () => {
+      sincronizarRatioSlider();
+      calcularDebounced();
+    });
+
+    elementos.R_mode.addEventListener('change', () => {
+      actualizarModosR();
+      actualizarRatioLabel();
+      calcularDebounced();
+    });
+
+    elementos.r_mode.addEventListener('change', () => {
+      actualizarModosr();
+      calcularDebounced();
+    });
+
+    elementos.btnCalcular.addEventListener('click', calcularYRenderizar);
+    elementos.btnGraficar.addEventListener('click', graficarTodo);
+    elementos.btnReset.addEventListener('click', reiniciar);
+  }
+
+  function inicializarApp() {
+    configurarTema();
+    inicializar3D();
+    vincularSistemasGeodesicos();
+    configurarEventListeners();
+
+    elementos.R_mode.value = 'value';
+    elementos.r_mode.value = 'ratio';
+    elementos.rRatio.value = 1.5;
+
+    actualizarModosR();
+    actualizarModosr();
+
+    selectPlanet('earth');
+    state.currentSistema = 'WGS84';
+    aplicarSistemaInputs();
+    actualizarInfoSistema();
+    elementos.sistemasTierra.classList.remove('hidden');
+
+    sincronizarRatioSlider();
+    
+    setTimeout(() => {
+      calcularYRenderizar();
+      graficarTodo();
+    }, 100);
+
+    mostrarMensaje('✓ Simulador inicializado', 'success');
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', inicializarApp);
+  } else {
+    inicializarApp();
+  }
+
+})();
+</script>
+</body>
+</html>

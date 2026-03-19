@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Algoritmo 5 · Latitud Media de Gauss</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tsparticles@2.12.0/tsparticles.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
+</head>
+<body class="bg-gray-900 text-white flex">
+
+  <!-- Sidebar -->
+  <aside class="w-64 h-screen bg-gradient-to-b from-gray-800 to-gray-900 p-6 shadow-lg flex flex-col z-20">
+    <h2 class="text-2xl font-bold text-emerald-400 text-center mb-8">🌍 Geodesia Geométrica</h2>
+    <nav class="space-y-3 flex-1">
+      <a href="geometrica.html" class="block px-4 py-3 rounded-lg hover:bg-emerald-600 transition">🏠 Inicio</a>
+      <a href="algoritmo1.html" class="block px-4 py-3 rounded-lg hover:bg-emerald-600 transition">🧮 Algoritmo 1 · Arcos y Área</a>
+      <a href="algoritmo2.html" class="block px-4 py-3 rounded-lg hover:bg-emerald-600 transition">📏 Algoritmo 2 · Nivelación</a>
+      <a href="algoritmo3.html" class="block px-4 py-3 rounded-lg hover:bg-emerald-600 transition">✂️ Algoritmo 3 · Bisección/Trisección</a>
+      <a href="algoritmo4.html" class="block px-4 py-3 rounded-lg hover:bg-emerald-600 transition">🗺️ Algoritmo 4 · Mercator</a>
+      <a href="algoritmo5.html" class="block px-4 py-3 rounded-lg bg-emerald-500 text-black font-semibold">🧭 Algoritmo 5 · Latitud Media</a>
+    </nav>
+    <a href="../index.html" class="mt-6 block text-center px-4 py-3 rounded-lg bg-white text-gray-800 font-bold hover:bg-gray-300 transition">⬅ Volver al inicio</a>
+  </aside>
+
+  <!-- Contenido -->
+  <main class="flex-1 relative overflow-hidden">
+    <div id="tsparticles" class="absolute inset-0"></div>
+
+    <section class="relative z-10 flex flex-col items-center justify-center min-h-screen p-10 text-center">
+      <h2 class="text-4xl font-bold text-emerald-400 mb-6">Algoritmo 5 · Latitud Media de Gauss</h2>
+
+      <!-- Menú de métodos -->
+      <div class="flex gap-4 mb-8">
+        <button onclick="showDirecto()" class="px-6 py-3 bg-indigo-500 text-white rounded-lg hover:bg-indigo-400">Método Directo</button>
+        <button onclick="showInverso()" class="px-6 py-3 bg-pink-500 text-white rounded-lg hover:bg-pink-400">Método Inverso</button>
+      </div>
+
+      <!-- Entrada -->
+      <div id="entrada" class="bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-2xl text-left"></div>
+
+      <!-- Resultados -->
+      <div id="resultados" class="mt-6 text-lg space-y-2"></div>
+
+      <!-- Mapa -->
+      <div id="map" class="h-96 w-full max-w-2xl mt-6 rounded-lg"></div>
+    </section>
+  </main>
+
+  <script>
+    // Partículas
+    tsParticles.load("tsparticles", {
+      particles: { number: { value: 60 }, color: { value: "#00ffcc" }, move: { enable: true, speed: 1 }, size: { value: 2 } }
+    });
+
+    // Mapa Leaflet
+    let map = L.map("map").setView([4, -74], 5);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
+
+    // Constantes WGS84
+    const R = 6378137;
+    const f = 1/298.257223563;
+    const e2 = f*(2-f);
+
+    // ======================
+    // Conversión
+    // ======================
+    function gmsToDecimal(g, m, s, dir) {
+      let dec = Math.abs(g) + m / 60 + s / 3600;
+      if (dir === "S" || dir === "W") dec = -dec;
+      return dec;
+    }
+    function decimalToGMS(decimal, tipo="") {
+      const grados = Math.floor(Math.abs(decimal));
+      const minutosDec = (Math.abs(decimal) - grados) * 60;
+      const minutos = Math.floor(minutosDec);
+      const segundos = ((minutosDec - minutos) * 60).toFixed(2);
+
+      let dir = "";
+      if(tipo==="lat"){ dir = decimal >= 0 ? "N" : "S"; }
+      else if(tipo==="lon"){ dir = decimal >= 0 ? "E" : "W"; }
+      return `${grados}° ${minutos}' ${segundos}" ${dir}`;
+    }
+
+    // ======================
+    // Algoritmos
+    // ======================
+    function metodoDirecto(lat1, lon1, azimut, distancia) {
+      let lat1r = lat1 * Math.PI / 180;
+      let lon1r = lon1 * Math.PI / 180;
+      let azr = azimut * Math.PI / 180;
+
+      let sinφ = Math.sin(lat1r);
+      let cosφ = Math.cos(lat1r);
+      let M1 = R * (1 - e2) / Math.pow(1 - e2 * sinφ * sinφ, 1.5);
+      let N1 = R / Math.sqrt(1 - e2 * sinφ * sinφ);
+
+      let dlat = distancia * Math.cos(azr) / M1;
+      let dlon = distancia * Math.sin(azr) / (N1 * cosφ);
+
+      let lat2r = lat1r + dlat;
+      let lon2r = lon1r + dlon;
+
+      while (true) {
+        let latAvg = (lat1r + lat2r) / 2;
+        let sinAvg = Math.sin(latAvg);
+        let cosAvg = Math.cos(latAvg);
+        let M = R * (1 - e2) / Math.pow(1 - e2 * sinAvg * sinAvg, 1.5);
+        let N = R / Math.sqrt(1 - e2 * sinAvg * sinAvg);
+
+        let new_dlat = distancia * Math.cos(azr) / M;
+        let new_dlon = distancia * Math.sin(azr) / (N * cosAvg);
+
+        if (Math.abs(new_dlat - dlat) < 1e-12 && Math.abs(new_dlon - dlon) < 1e-12) break;
+        dlat = new_dlat; dlon = new_dlon;
+        lat2r = lat1r + dlat; lon2r = lon1r + dlon;
+      }
+
+      let lat2 = lat2r * 180 / Math.PI;
+      let lon2 = lon2r * 180 / Math.PI;
+      let latAvg = (lat1r + lat2r) / 2;
+      let deltaAz = Math.atan2(Math.sin(azr) * Math.tan(latAvg), 1);
+      let azFinal = (azr + deltaAz / 2) * 180 / Math.PI;
+
+      return [lat2, lon2, azFinal];
+    }
+
+    function metodoInverso(lat1, lon1, lat2, lon2) {
+      let lat1r = lat1 * Math.PI / 180;
+      let lon1r = lon1 * Math.PI / 180;
+      let lat2r = lat2 * Math.PI / 180;
+      let lon2r = lon2 * Math.PI / 180;
+
+      let phi = (lat1r + lat2r) / 2;
+      let dlat = lat2r - lat1r;
+      let dlon = lon2r - lon1r;
+
+      let sinφ = Math.sin(phi);
+      let cosφ = Math.cos(phi);
+      let t2 = (e2 / (1 - e2)) * cosφ * cosφ;
+
+      let M = R * (1 - e2) / Math.pow(1 - e2 * sinφ * sinφ, 1.5);
+      let N = R / Math.sqrt(1 - e2 * sinφ * sinφ);
+
+      let A = M * dlat * (1 + (1 / 12) * t2 * dlon * dlon * cosφ * cosφ);
+      let B = N * cosφ * dlon * (1 + (1 / 12) * t2 * dlat * dlat);
+
+      let dist = Math.sqrt(A * A + B * B);
+      let azIni = Math.atan2(B, A) * 180 / Math.PI; if (azIni < 0) azIni += 360;
+      let azFin = Math.atan2(-B, -A) * 180 / Math.PI; if (azFin < 0) azFin += 360;
+
+      return [dist, azIni, azFin];
+    }
+
+    // ======================
+    // Interfaz Directo
+    // ======================
+    function showDirecto(){
+      document.getElementById("entrada").innerHTML=`
+        <h3 class="text-xl font-semibold text-emerald-300 mb-4">Método Directo</h3>
+        <label><input type="radio" name="tipo" value="decimal" checked onchange="renderDirecto()"> Decimal</label>
+        <label class="ml-4"><input type="radio" name="tipo" value="gms" onchange="renderDirecto()"> GMS</label>
+        <div id="campos"></div>
+        <label class="block mt-3">Distancia (m): <input id="distancia" type="number" step="any" class="w-40 p-1 rounded bg-gray-700"></label>
+        <button onclick="calcularDirecto()" class="mt-4 px-6 py-2 bg-orange-500 hover:bg-orange-600 rounded">Calcular</button>
+      `;
+      renderDirecto();
+    }
+
+    function renderDirecto(){
+      let tipo=document.querySelector('input[name="tipo"]:checked').value;
+      let campos=document.getElementById("campos");
+      if(tipo==="decimal"){
+        campos.innerHTML=`
+          <label class="block">Latitud inicial (°): <input id="lat1" type="number" step="any" class="w-32 p-1 rounded bg-gray-700"></label>
+          <label class="block">Longitud inicial (°): <input id="lon1" type="number" step="any" class="w-32 p-1 rounded bg-gray-700"></label>
+          <label class="block">Azimut inicial (°): <input id="azimut" type="number" step="any" class="w-32 p-1 rounded bg-gray-700"></label>`;
+      } else {
+        campos.innerHTML=`
+          <p>Latitud inicial:</p>
+          <input id="latg" type="number" class="w-16 p-1 bg-gray-700">°
+          <input id="latm" type="number" class="w-16 p-1 bg-gray-700">'
+          <input id="lats" type="number" class="w-16 p-1 bg-gray-700">"
+          <select id="latd"><option>N</option><option>S</option></select>
+          <p>Longitud inicial:</p>
+          <input id="long" type="number" class="w-16 p-1 bg-gray-700">°
+          <input id="lonm" type="number" class="w-16 p-1 bg-gray-700">'
+          <input id="lons" type="number" class="w-16 p-1 bg-gray-700">"
+          <select id="lond"><option>E</option><option>W</option></select>
+          <p>Azimut inicial:</p>
+          <input id="azg" type="number" class="w-16 p-1 bg-gray-700">°
+          <input id="azm" type="number" class="w-16 p-1 bg-gray-700">'
+          <input id="azs" type="number" class="w-16 p-1 bg-gray-700">"`;
+      }
+    }
+
+    function calcularDirecto(){
+      let tipo=document.querySelector('input[name="tipo"]:checked').value;
+      let dist=parseFloat(document.getElementById("distancia").value);
+      let lat1,lon1,az;
+      if(tipo==="decimal"){
+        lat1=parseFloat(document.getElementById("lat1").value);
+        lon1=parseFloat(document.getElementById("lon1").value);
+        az=parseFloat(document.getElementById("azimut").value);
+      } else {
+        lat1=gmsToDecimal(+document.getElementById("latg").value,+document.getElementById("latm").value,+document.getElementById("lats").value,document.getElementById("latd").value);
+        lon1=gmsToDecimal(+document.getElementById("long").value,+document.getElementById("lonm").value,+document.getElementById("lons").value,document.getElementById("lond").value);
+        az=(+document.getElementById("azg").value)+(+document.getElementById("azm").value)/60+(+document.getElementById("azs").value)/3600;
+      }
+      let [lat2,lon2,azf]=metodoDirecto(lat1,lon1,az,dist);
+      document.getElementById("resultados").innerHTML=`
+        <p><b>Latitud final:</b> ${lat2.toFixed(6)}° (${decimalToGMS(lat2,"lat")})</p>
+        <p><b>Longitud final:</b> ${lon2.toFixed(6)}° (${decimalToGMS(lon2,"lon")})</p>
+        <p><b>Azimut final:</b> ${azf.toFixed(6)}° (${decimalToGMS(azf)})</p>
+      `;
+      map.setView([lat2,lon2],6);
+      L.marker([lat1,lon1]).addTo(map).bindPopup("Inicio");
+      L.marker([lat2,lon2]).addTo(map).bindPopup("Final");
+      L.polyline([[lat1,lon1],[lat2,lon2]],{color:"red"}).addTo(map);
+    }
+
+    // ======================
+    // Interfaz Inverso
+    // ======================
+    function showInverso(){
+      document.getElementById("entrada").innerHTML=`
+        <h3 class="text-xl font-semibold text-emerald-300 mb-4">Método Inverso</h3>
+        <label><input type="radio" name="tipo" value="decimal" checked onchange="renderInverso()"> Decimal</label>
+        <label class="ml-4"><input type="radio" name="tipo" value="gms" onchange="renderInverso()"> GMS</label>
+        <div id="campos"></div>
+        <button onclick="calcularInverso()" class="mt-4 px-6 py-2 bg-orange-500 hover:bg-orange-600 rounded">Calcular</button>
+      `;
+      renderInverso();
+    }
+
+    function renderInverso(){
+      let tipo=document.querySelector('input[name="tipo"]:checked').value;
+      let campos=document.getElementById("campos");
+      if(tipo==="decimal"){
+        campos.innerHTML=`
+          <label class="block">Latitud inicial (°): <input id="lat1Inv" type="number" step="any" class="w-32 p-1 rounded bg-gray-700"></label>
+          <label class="block">Longitud inicial (°): <input id="lon1Inv" type="number" step="any" class="w-32 p-1 rounded bg-gray-700"></label>
+          <label class="block">Latitud final (°): <input id="lat2Inv" type="number" step="any" class="w-32 p-1 rounded bg-gray-700"></label>
+          <label class="block">Longitud final (°): <input id="lon2Inv" type="number" step="any" class="w-32 p-1 rounded bg-gray-700"></label>`;
+      } else {
+        campos.innerHTML=`
+          <p>Latitud inicial:</p>
+          <input id="lat1g" type="number" class="w-16 p-1 bg-gray-700">°
+          <input id="lat1m" type="number" class="w-16 p-1 bg-gray-700">'
+          <input id="lat1s" type="number" class="w-16 p-1 bg-gray-700">"
+          <select id="lat1d"><option>N</option><option>S</option></select>
+          <p>Longitud inicial:</p>
+          <input id="lon1g" type="number" class="w-16 p-1 bg-gray-700">°
+          <input id="lon1m" type="number" class="w-16 p-1 bg-gray-700">'
+          <input id="lon1s" type="number" class="w-16 p-1 bg-gray-700">"
+          <select id="lon1d"><option>E</option><option>W</option></select>
+          <p>Latitud final:</p>
+          <input id="lat2g" type="number" class="w-16 p-1 bg-gray-700">°
+          <input id="lat2m" type="number" class="w-16 p-1 bg-gray-700">'
+          <input id="lat2s" type="number" class="w-16 p-1 bg-gray-700">"
+          <select id="lat2d"><option>N</option><option>S</option></select>
+          <p>Longitud final:</p>
+          <input id="lon2g" type="number" class="w-16 p-1 bg-gray-700">°
+          <input id="lon2m" type="number" class="w-16 p-1 bg-gray-700">'
+          <input id="lon2s" type="number" class="w-16 p-1 bg-gray-700">"
+          <select id="lon2d"><option>E</option><option>W</option></select>`;
+      }
+    }
+
+    function calcularInverso(){
+      let tipo=document.querySelector('input[name="tipo"]:checked').value;
+      let lat1,lon1,lat2,lon2;
+      if(tipo==="decimal"){
+        lat1=parseFloat(document.getElementById("lat1Inv").value);
+        lon1=parseFloat(document.getElementById("lon1Inv").value);
+        lat2=parseFloat(document.getElementById("lat2Inv").value);
+        lon2=parseFloat(document.getElementById("lon2Inv").value);
+      } else {
+        lat1=gmsToDecimal(+document.getElementById("lat1g").value,+document.getElementById("lat1m").value,+document.getElementById("lat1s").value,document.getElementById("lat1d").value);
+        lon1=gmsToDecimal(+document.getElementById("lon1g").value,+document.getElementById("lon1m").value,+document.getElementById("lon1s").value,document.getElementById("lon1d").value);
+        lat2=gmsToDecimal(+document.getElementById("lat2g").value,+document.getElementById("lat2m").value,+document.getElementById("lat2s").value,document.getElementById("lat2d").value);
+        lon2=gmsToDecimal(+document.getElementById("lon2g").value,+document.getElementById("lon2m").value,+document.getElementById("lon2s").value,document.getElementById("lon2d").value);
+      }
+      let [dist,azIni,azFin]=metodoInverso(lat1,lon1,lat2,lon2);
+      document.getElementById("resultados").innerHTML=`
+        <p><b>Distancia:</b> ${dist.toFixed(3)} m</p>
+        <p><b>Azimut inicial:</b> ${azIni.toFixed(6)}° (${decimalToGMS(azIni)})</p>
+        <p><b>Azimut final:</b> ${azFin.toFixed(6)}° (${decimalToGMS(azFin)})</p>
+      `;
+      map.setView([(lat1+lat2)/2,(lon1+lon2)/2],6);
+      L.marker([lat1,lon1]).addTo(map).bindPopup("Inicio");
+      L.marker([lat2,lon2]).addTo(map).bindPopup("Final");
+      L.polyline([[lat1,lon1],[lat2,lon2]],{color:"blue"}).addTo(map);
+    }
+  </script>
+</body>
+</html>

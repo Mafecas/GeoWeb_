@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Algoritmo 4 · Proyección Mercator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tsparticles@2.12.0/tsparticles.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
+</head>
+<body class="bg-gray-900 text-white flex">
+
+  <!-- Sidebar -->
+  <aside class="w-64 h-screen bg-gradient-to-b from-gray-800 to-gray-900 p-6 shadow-lg flex flex-col z-20">
+    <h2 class="text-2xl font-bold text-emerald-400 text-center mb-8">🌍 Geodesia Geométrica</h2>
+    <nav class="space-y-3 flex-1">
+      <a href="geometrica.html" class="block px-4 py-3 rounded-lg hover:bg-emerald-600 transition">🏠 Inicio</a>
+      <a href="algoritmo1.html" class="block px-4 py-3 rounded-lg hover:bg-emerald-600 transition">🧮 Algoritmo 1 · Arcos y Área</a>
+      <a href="algoritmo2.html" class="block px-4 py-3 rounded-lg hover:bg-emerald-600 transition">📏 Algoritmo 2 · Nivelación</a>
+      <a href="algoritmo3.html" class="block px-4 py-3 rounded-lg hover:bg-emerald-600 transition">✂️ Algoritmo 3 · Bisección/Trisección</a>
+      <a href="algoritmo4.html" class="block px-4 py-3 rounded-lg bg-emerald-500 text-black font-semibold">🗺️ Algoritmo 4 · Mercator</a>
+      <a href="algoritmo5.html" class="block px-4 py-3 rounded-lg hover:bg-emerald-600 transition">🧭 Algoritmo 5 · Latitud Media</a>
+    </nav>
+    <a href="../index.html" class="mt-6 block text-center px-4 py-3 rounded-lg bg-white text-gray-800 font-bold hover:bg-gray-300 transition">⬅ Volver al inicio</a>
+  </aside>
+
+  <!-- Contenido -->
+  <main class="flex-1 relative overflow-hidden">
+    <!-- Fondo partículas -->
+    <div id="tsparticles" class="absolute inset-0"></div>
+
+    <!-- Sección central -->
+    <section class="relative z-10 flex flex-col items-center justify-center min-h-screen p-10 text-center">
+      <h2 class="text-4xl font-bold text-emerald-400 mb-6">Algoritmo 4 · Proyección Mercator</h2>
+
+      <!-- Menú de métodos -->
+      <div class="flex gap-4 mb-8">
+        <button onclick="showDirecto()" class="px-6 py-3 bg-indigo-500 text-white rounded-lg hover:bg-indigo-400">Método Directo</button>
+        <button onclick="showInverso()" class="px-6 py-3 bg-pink-500 text-white rounded-lg hover:bg-pink-400">Método Inverso</button>
+      </div>
+
+      <!-- Entrada datos -->
+      <div id="entrada" class="bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-2xl text-left"></div>
+
+      <!-- Resultados -->
+      <div id="resultados" class="mt-6 text-lg space-y-2"></div>
+
+      <!-- Mapa -->
+      <div id="map" class="h-96 w-full max-w-2xl mt-6 rounded-lg"></div>
+    </section>
+  </main>
+
+  <script>
+    // Inicializar partículas
+    tsParticles.load("tsparticles", {
+      particles: {
+        number: { value: 50 },
+        color: { value: "#00ffcc" },
+        move: { enable: true, speed: 1 },
+        size: { value: 2 }
+      }
+    });
+
+    let map = L.map("map").setView([4, -74], 5);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19
+    }).addTo(map);
+
+    function gmsToDecimal(g, m, s, dir) {
+      let dec = Math.abs(g) + m/60 + s/3600;
+      if (dir === "S" || dir === "W") dec = -dec;
+      return dec;
+    }
+
+    function decimalToGMS(valor, tipo) {
+      let grados = Math.floor(Math.abs(valor));
+      let minutos = Math.floor((Math.abs(valor) - grados) * 60);
+      let segundos = ((Math.abs(valor) - grados) * 60 - minutos) * 60;
+      let dir = (tipo === "lat") ? (valor >= 0 ? "N" : "S") : (valor >= 0 ? "E" : "W");
+      return `${grados}° ${minutos}' ${segundos.toFixed(2)}" ${dir}`;
+    }
+
+    function showDirecto() {
+      document.getElementById("entrada").innerHTML = `
+        <h3 class="text-xl font-semibold text-emerald-300 mb-4">Método Directo Mercator</h3>
+        <label class="block mb-2">Tipo de entrada:
+          <select id="tipoDato" class="p-2 rounded bg-gray-700 text-white ml-2">
+            <option value="decimal">Decimales</option>
+            <option value="gms">Grados, Minutos, Segundos</option>
+          </select>
+        </label>
+        <div id="inputCampos"></div>
+        <button onclick="calcularDirecto()" class="mt-4 px-6 py-2 bg-orange-500 hover:bg-orange-600 rounded">Calcular</button>
+      `;
+      actualizarCampos();
+      document.getElementById("tipoDato").addEventListener("change", actualizarCampos);
+    }
+
+    function actualizarCampos() {
+      let tipo = document.getElementById("tipoDato").value;
+      let div = document.getElementById("inputCampos");
+      if (tipo === "decimal") {
+        div.innerHTML = `
+          <label class="block">Latitud (°): <input id="latDec" type="number" step="any" class="w-32 p-1 rounded bg-gray-700"></label>
+          <label class="block">Longitud (°): <input id="lonDec" type="number" step="any" class="w-32 p-1 rounded bg-gray-700"></label>
+        `;
+      } else {
+        div.innerHTML = `
+          <p class="font-semibold">Latitud:</p>
+          <input id="latG" type="number" class="w-16 p-1 rounded bg-gray-700"> °
+          <input id="latM" type="number" class="w-16 p-1 rounded bg-gray-700"> '
+          <input id="latS" type="number" step="any" class="w-16 p-1 rounded bg-gray-700"> "
+          <select id="latDir" class="p-1 rounded bg-gray-700 text-white"><option value="N">N</option><option value="S">S</option></select>
+          <p class="font-semibold mt-2">Longitud:</p>
+          <input id="lonG" type="number" class="w-16 p-1 rounded bg-gray-700"> °
+          <input id="lonM" type="number" class="w-16 p-1 rounded bg-gray-700"> '
+          <input id="lonS" type="number" step="any" class="w-16 p-1 rounded bg-gray-700"> "
+          <select id="lonDir" class="p-1 rounded bg-gray-700 text-white"><option value="E">E</option><option value="W">W</option></select>
+        `;
+      }
+    }
+
+    function calcularDirecto() {
+      let tipo = document.getElementById("tipoDato").value;
+      let lat, lon;
+
+      if (tipo === "decimal") {
+        lat = parseFloat(document.getElementById("latDec").value);
+        lon = parseFloat(document.getElementById("lonDec").value);
+      } else {
+        lat = gmsToDecimal(
+          parseInt(document.getElementById("latG").value),
+          parseInt(document.getElementById("latM").value),
+          parseFloat(document.getElementById("latS").value),
+          document.getElementById("latDir").value
+        );
+        lon = gmsToDecimal(
+          parseInt(document.getElementById("lonG").value),
+          parseInt(document.getElementById("lonM").value),
+          parseFloat(document.getElementById("lonS").value),
+          document.getElementById("lonDir").value
+        );
+      }
+
+      if (isNaN(lat) || isNaN(lon)) {
+        document.getElementById("resultados").innerHTML = "<p class='text-red-400'>❌ Ingresa coordenadas válidas.</p>";
+        return;
+      }
+
+      // Fórmulas Mercator Directo (UTM)
+      let a = 6378137.0, e2 = 0.00669437999014;
+      let latRad = lat * Math.PI / 180, lonRad = lon * Math.PI / 180;
+      let zona = Math.floor((lon + 180) / 6) + 1;
+      let lambda0 = ((zona - 1) * 6 - 180 + 3) * Math.PI / 180;
+      let k0 = 0.9996;
+
+      let N = a / Math.sqrt(1 - e2 * Math.sin(latRad) ** 2);
+      let T = Math.tan(latRad) ** 2;
+      let C = (e2 / (1 - e2)) * Math.cos(latRad) ** 2;
+      let A = (lonRad - lambda0) * Math.cos(latRad);
+
+      let M = a * ((1 - e2/4 - 3*e2**2/64 - 5*e2**3/256) * latRad
+        - (3*e2/8 + 3*e2**2/32 + 45*e2**3/1024) * Math.sin(2 * latRad)
+        + (15*e2**2/256 + 45*e2**3/1024) * Math.sin(4 * latRad)
+        - (35*e2**3/3072) * Math.sin(6 * latRad));
+
+      let x = k0 * (N * (A + (1 - T + C) * A**3 / 6 + (5 - 18*T + T**2 + 72*C - 58*e2) * A**5 / 120)) + 500000;
+      let y = k0 * (M + N * Math.tan(latRad) * (A**2 / 2 + (5 - T + 9*C + 4*C**2) * A**4 / 24
+        + (61 - 58*T + T**2 + 600*C - 330*e2) * A**6 / 720));
+
+      if (lat < 0) y += 10000000;
+      let hemi = lat >= 0 ? "N" : "S";
+
+      document.getElementById("resultados").innerHTML = `
+        <p>✅ Zona: ${zona}</p>
+        <p>✅ Hemisferio: ${hemi}</p>
+        <p>✅ Norte (Y): ${y.toFixed(2)}</p>
+        <p>✅ Este (X): ${x.toFixed(2)}</p>
+      `;
+
+      map.setView([lat, lon], 6);
+      L.marker([lat, lon]).addTo(map).bindPopup(decimalToGMS(lat,"lat")+"<br>"+decimalToGMS(lon,"lon")).openPopup();
+    }
+
+    function showInverso() {
+      document.getElementById("entrada").innerHTML = `
+        <h3 class="text-xl font-semibold text-emerald-300 mb-4">Método Inverso Mercator</h3>
+        <label class="block">Zona UTM: <input id="zona" type="number" class="w-20 p-1 rounded bg-gray-700"></label>
+        <label class="block">Hemisferio (N/S): <input id="hemi" maxlength="1" class="w-16 p-1 rounded bg-gray-700"></label>
+        <label class="block">Norte (Y): <input id="norte" type="number" step="any" class="w-40 p-1 rounded bg-gray-700"></label>
+        <label class="block">Este (X): <input id="este" type="number" step="any" class="w-40 p-1 rounded bg-gray-700"></label>
+        <button onclick="calcularInverso()" class="mt-4 px-6 py-2 bg-orange-500 hover:bg-orange-600 rounded">Calcular</button>
+      `;
+    }
+
+    function calcularInverso() {
+      let zona = parseInt(document.getElementById("zona").value);
+      let hemi = document.getElementById("hemi").value.toUpperCase();
+      let y = parseFloat(document.getElementById("norte").value);
+      let x = parseFloat(document.getElementById("este").value);
+
+      if (isNaN(zona) || (hemi !== "N" && hemi !== "S") || isNaN(y) || isNaN(x)) {
+        document.getElementById("resultados").innerHTML = "<p class='text-red-400'>❌ Ingresa datos UTM válidos.</p>";
+        return;
+      }
+
+      let a = 6378137.0, e2 = 0.00669437999014, k0 = 0.9996;
+      let lambda0 = ((zona - 1) * 6 - 180 + 3) * Math.PI / 180;
+      if (hemi === "S") y -= 10000000;
+
+      let M = y / k0;
+      let mu = M / (a * (1 - e2/4 - 3*e2**2/64 - 5*e2**3/256));
+      let e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
+
+      let J1 = 3*e1/2 - 27*e1**3/32;
+      let J2 = 21*e1**2/16 - 55*e1**4/32;
+      let J3 = 151*e1**3/96;
+      let J4 = 1097*e1**4/512;
+
+      let fp = mu + J1*Math.sin(2*mu) + J2*Math.sin(4*mu) + J3*Math.sin(6*mu) + J4*Math.sin(8*mu);
+
+      let eprime2 = e2 / (1 - e2);
+      let C1 = eprime2 * Math.cos(fp) ** 2;
+      let T1 = Math.tan(fp) ** 2;
+      let N1 = a / Math.sqrt(1 - e2 * Math.sin(fp) ** 2);
+      let R1 = a * (1 - e2) / Math.pow(1 - e2 * Math.sin(fp) ** 2, 1.5);
+      let D = (x - 500000) / (N1 * k0);
+
+      let latRad = fp - (N1 * Math.tan(fp) / R1) * (D**2/2 - (5 + 3*T1 + 10*C1 - 4*C1**2 - 9*eprime2) * D**4/24
+        + (61 + 90*T1 + 298*C1 + 45*T1**2 - 252*eprime2 - 3*C1**2) * D**6/720);
+      let lonRad = lambda0 + (D - (1 + 2*T1 + C1) * D**3/6 + (5 - 2*C1 + 28*T1 - 3*C1**2 + 8*eprime2 + 24*T1**2) * D**5/120) / Math.cos(fp);
+
+      let lat = latRad * 180 / Math.PI;
+      let lon = lonRad * 180 / Math.PI;
+
+      document.getElementById("resultados").innerHTML = `
+        <p>✅ Latitud: ${decimalToGMS(lat,"lat")}</p>
+        <p>✅ Longitud: ${decimalToGMS(lon,"lon")}</p>
+      `;
+
+      map.setView([lat, lon], 6);
+      L.marker([lat, lon]).addTo(map).bindPopup(decimalToGMS(lat,"lat")+"<br>"+decimalToGMS(lon,"lon")).openPopup();
+    }
+  </script>
+</body>
+</html>

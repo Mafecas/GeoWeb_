@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Algoritmo 1 · Arcos y Área</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tsparticles@2.12.0/tsparticles.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson@3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body class="bg-gray-900 text-white flex">
+
+  <!-- Sidebar -->
+  <aside class="w-64 h-screen bg-gradient-to-b from-gray-800 to-gray-900 p-6 shadow-lg flex flex-col z-20">
+    <h2 class="text-2xl font-bold text-emerald-400 text-center mb-8">🌍 Geodesia Geométrica</h2>
+    <nav class="space-y-3 flex-1">
+      <a href="geometrica.html" class="block px-4 py-3 rounded-lg hover:bg-emerald-600 transition">🏠 Inicio</a>
+      <a href="algoritmo1.html" class="block px-4 py-3 rounded-lg bg-emerald-500 text-black font-semibold">🧮 Algoritmo 1 · Arcos y Área</a>
+      <a href="algoritmo2.html" class="block px-4 py-3 rounded-lg hover:bg-emerald-600 transition">📏 Algoritmo 2 · Nivelación</a>
+      <a href="algoritmo3.html" class="block px-4 py-3 rounded-lg hover:bg-emerald-600 transition">✂️ Algoritmo 3 · Bisección/Trisección</a>
+      <a href="algoritmo4.html" class="block px-4 py-3 rounded-lg hover:bg-emerald-600 transition">🗺️ Algoritmo 4 · UTM</a>
+      <a href="algoritmo5.html" class="block px-4 py-3 rounded-lg hover:bg-emerald-600 transition">🧭 Algoritmo 5 · Latitud Media</a>
+    </nav>
+    <a href="../index.html" class="mt-6 block text-center px-4 py-3 rounded-lg bg-white text-gray-800 font-bold hover:bg-gray-300 transition">⬅ Volver al inicio</a>
+  </aside>
+
+  <!-- Contenido -->
+  <main class="flex-1 relative overflow-hidden">
+    <!-- Fondo partículas -->
+    <div id="tsparticles" class="absolute inset-0"></div>
+
+    <!-- Sección central -->
+    <section class="relative z-10 flex flex-col items-center justify-center min-h-screen p-10 text-center">
+      <h2 class="text-4xl font-bold text-emerald-400 mb-6">Algoritmo 1 · Arcos y Área</h2>
+
+      <!-- Menú -->
+      <div class="flex gap-4 mb-8">
+        <button onclick="showArcoMeridiano()" class="px-6 py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-400">Arco Meridiano</button>
+        <button onclick="showArcoParalelo()" class="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-400">Arco Paralelo</button>
+        <button onclick="showArea()" class="px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-400">Área de Cuadrilátero</button>
+      </div>
+
+      <!-- Contenedor dinámico -->
+      <div id="alg1-content" class="w-full max-w-3xl bg-white/10 backdrop-blur-lg p-8 rounded-xl shadow-lg text-left">
+        <p class="text-gray-300">Selecciona un cálculo para comenzar.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Script partículas -->
+  <script>
+    tsParticles.load("tsparticles", {
+      background: { color: "transparent" },
+      fpsLimit: 60,
+      particles: {
+        color: { value: "#00ffcc" },
+        links: { color: "#00ffcc", distance: 150, enable: true, opacity: 0.4, width: 1 },
+        move: { enable: true, speed: 2, outModes: "bounce" },
+        number: { value: 60, density: { enable: true, area: 800 } },
+        opacity: { value: 0.6 },
+        shape: { type: "circle" },
+        size: { value: { min: 1, max: 4 } }
+      },
+      interactivity: {
+        events: { onHover: { enable: true, mode: "repulse" } },
+        modes: { repulse: { distance: 100, duration: 0.4 } }
+      },
+      detectRetina: true
+    });
+  </script>
+
+  <!-- Script de cálculos -->
+  <script>
+  function showArcoMeridiano() {
+    document.getElementById("alg1-content").innerHTML = `
+      <h3 class="text-2xl font-semibold text-emerald-300 mb-4">Cálculo de Arco Meridiano</h3>
+
+      <label class="block mb-2 text-gray-200">Elipsoide de referencia</label>
+      <select id="elip" class="mb-4 p-2 rounded text-black">
+        <option value="WGS84">WGS84</option>
+        <option value="GRS80">GRS80</option>
+        <option value="INTL">Internacional 1924</option>
+      </select>
+
+      <label class="block mb-2 text-gray-200">Formato de entrada</label>
+      <div class="flex gap-4 mb-4">
+        <label><input type="radio" name="formato" value="decimal" checked onchange="toggleFormato()"> Decimal</label>
+        <label><input type="radio" name="formato" value="gms" onchange="toggleFormato()"> GMS</label>
+      </div>
+
+      <div id="lat-inputs"></div>
+
+      <div class="mt-4 flex flex-wrap gap-2">
+        <button onclick="calcArcoMeridiano()" class="px-4 py-2 bg-emerald-500 rounded">Calcular</button>
+        <button onclick="drawElipse2D()" class="px-4 py-2 bg-blue-500 rounded">Mostrar Elipse 2D</button>
+        <button onclick="drawMapa2D()" class="px-4 py-2 bg-indigo-500 rounded">Mostrar Mapa 2D</button>
+      </div>
+
+      <div id="result" class="mt-6 p-4 bg-black/30 rounded text-gray-100"></div>
+
+      <canvas id="chartArco" class="w-full h-80 mt-6"></canvas>
+      <svg id="svgMapaMer" viewBox="0 0 600 300" class="w-full h-64 mt-6 bg-black/20"></svg>
+    `;
+    toggleFormato(); // inicia con decimal
+  }
+
+  function toggleFormato() {
+    const formato = document.querySelector('input[name="formato"]:checked').value;
+    const cont = document.getElementById("lat-inputs");
+
+    if (formato === "decimal") {
+      cont.innerHTML = `
+        <label class="block mb-2 text-gray-200">Latitud 1 (°)</label>
+        <input id="lat1" type="number" step="any" class="mb-4 p-2 w-full rounded text-black" placeholder="Ej: 4.5" />
+        <label class="block mb-2 text-gray-200">Latitud 2 (°)</label>
+        <input id="lat2" type="number" step="any" class="mb-4 p-2 w-full rounded text-black" placeholder="Ej: 6.0" />
+      `;
+    } else {
+      cont.innerHTML = `
+        <p class="text-gray-300 mb-2">Latitud 1</p>
+        <div class="flex gap-2 mb-4">
+          <input id="lat1_deg" type="number" placeholder="°" class="p-2 w-16 rounded text-black" />
+          <input id="lat1_min" type="number" placeholder="'" class="p-2 w-16 rounded text-black" />
+          <input id="lat1_sec" type="number" placeholder='"' class="p-2 w-16 rounded text-black" />
+          <select id="lat1_dir" class="p-2 rounded text-black"><option>N</option><option>S</option></select>
+        </div>
+        <p class="text-gray-300 mb-2">Latitud 2</p>
+        <div class="flex gap-2 mb-4">
+          <input id="lat2_deg" type="number" placeholder="°" class="p-2 w-16 rounded text-black" />
+          <input id="lat2_min" type="number" placeholder="'" class="p-2 w-16 rounded text-black" />
+          <input id="lat2_sec" type="number" placeholder='"' class="p-2 w-16 rounded text-black" />
+          <select id="lat2_dir" class="p-2 rounded text-black"><option>N</option><option>S</option></select>
+        </div>
+      `;
+    }
+  }
+
+  function toDecimal(deg, min, sec, dir) {
+    const d = parseFloat(deg) || 0;
+    const m = parseFloat(min) || 0;
+    const s = parseFloat(sec) || 0;
+    let val = d + m/60 + s/3600;
+    if (dir === "S") val *= -1;
+    return val;
+  }
+
+  // ⬇️ MOVER AQUÍ (ámbito global) ⬇️
+  function getLatitudesDecimal() {
+    const formato = document.querySelector('input[name="formato"]:checked').value;
+    let lat1, lat2;
+    if (formato === "decimal") {
+      lat1 = parseFloat(document.getElementById("lat1")?.value);
+      lat2 = parseFloat(document.getElementById("lat2")?.value);
+    } else {
+      lat1 = toDecimal(
+        document.getElementById("lat1_deg")?.value,
+        document.getElementById("lat1_min")?.value,
+        document.getElementById("lat1_sec")?.value,
+        document.getElementById("lat1_dir")?.value
+      );
+      lat2 = toDecimal(
+        document.getElementById("lat2_deg")?.value,
+        document.getElementById("lat2_min")?.value,
+        document.getElementById("lat2_sec")?.value,
+        document.getElementById("lat2_dir")?.value
+      );
+    }
+    if (isNaN(lat1) || isNaN(lat2)) {
+      alert("Primero ingresa latitudes válidas.");
+      return null;
+    }
+    return [lat1, lat2];
+  }
+  // ⬆️ MOVER AQUÍ (ámbito global) ⬆️
+
+  // Cálculo arco meridiano
+  function calcArcoMeridiano() {
+    const elip = document.getElementById("elip").value;
+    const lats = getLatitudesDecimal();
+    if (!lats) return;
+    const [lat1, lat2] = lats;
+
+    let a, f;
+    if (elip === "WGS84") { a = 6378137.0; f = 1/298.257223563; }
+    else if (elip === "GRS80") { a = 6378137.0; f = 1/298.257222101; }
+    else { a = 6378388.0; f = 1/297.0; }
+
+    const e2  = 2*f - f*f;
+    const rad = d => d*Math.PI/180;
+    const φ1 = rad(lat1), φ2 = rad(lat2);
+
+    // Radio de curvatura meridiana
+    const M = φ => a*(1-e2)/Math.pow(1-e2*Math.sin(φ)**2, 1.5);
+
+    const delta = Math.abs(φ2-φ1);
+    const s_cerrado = M((φ1+φ2)/2)*delta;
+
+    // Serie (abreviada) del arco meridiano
+    const A0 = 1 - e2/4 - 3*e2**2/64;
+    const A2 = 3/8*(e2 + e2**2/4);
+    const Mphi = φ => a*(A0*φ - A2*Math.sin(2*φ));
+    const s_series = Math.abs(Mphi(φ2)-Mphi(φ1));
+
+    document.getElementById("result").innerHTML = `
+      <p><b>Método cerrado:</b> ${s_cerrado.toFixed(3)} m</p>
+      <p><b>Método serie:</b> ${s_series.toFixed(3)} m</p>
+    `;
+  }
+
+  // ==== Gráfico Elipse con Chart.js ====
+  let chart;
+  function drawElipse2D() {
+    const latitudes = getLatitudesDecimal();
+    if (!latitudes) return;
+    const [lat1, lat2] = latitudes;
+
+    const a = 6378.137, b = 6356.752; // km
+    const rad = d => d * Math.PI / 180;
+    const φ1 = rad(lat1), φ2 = rad(lat2);
+
+    const theta = Array.from({ length: 200 }, (_, i) => i * Math.PI / 200);
+    const elipse = theta.map(t => ({ x: a * Math.cos(t), y: b * Math.sin(t) }));
+
+    const arcoTheta = Array.from({ length: 200 }, (_, i) => φ1 + (φ2 - φ1) * i / 200);
+    const arco = arcoTheta.map(t => ({ x: a * Math.cos(t), y: b * Math.sin(t) }));
+
+    if (chart) chart.destroy();
+    chart = new Chart(document.getElementById("chartArco"), {
+      type: "scatter",
+      data: {
+        datasets: [
+          { label: "Elipse", data: elipse, showLine: true, parsing: false, borderWidth: 2, borderColor: "blue", pointRadius: 0 },
+          { label: "Arco",   data: arco,   showLine: true, parsing: false, borderWidth: 2, borderColor: "orange", pointRadius: 0 },
+          { label: "Lat1",   data: [{ x: a * Math.cos(φ1), y: b * Math.sin(φ1) }], parsing: false, backgroundColor: "red", pointRadius: 6 },
+          { label: "Lat2",   data: [{ x: a * Math.cos(φ2), y: b * Math.sin(φ2) }], parsing: false, backgroundColor: "green", pointRadius: 6 }
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { title: { display: true, text: "X (km)" } },
+          y: { title: { display: true, text: "Y (km)" } }
+        }
+      }
+    });
+  }
+
+  // ==== Mapa 2D con D3/TopoJSON ====
+  async function drawMapa2D() {
+    const latitudes = getLatitudesDecimal();
+    if (!latitudes) return;
+    const [lat1, lat2] = latitudes;
+
+    const svg = d3.select("#svgMapaMer");
+    svg.selectAll("*").remove();
+
+    const width = 600, height = 300;
+
+    const projection = d3.geoEquirectangular()
+      .scale(width / (2 * Math.PI))
+      .translate([width / 2, height / 2]);
+
+    const path = d3.geoPath().projection(projection);
+
+    // Carga el mapa mundial
+    const world = await d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json");
+    const countries = topojson.feature(world, world.objects.countries);
+
+    svg.attr("viewBox", [0, 0, width, height]);
+
+    svg.append("path")
+      .datum(countries)
+      .attr("d", path)
+      .attr("fill", "#cce5ff")
+      .attr("stroke", "#333");
+
+    // Traza el meridiano (λ = 0) entre lat1 y lat2
+    const lineData = [
+      [0, lat1],
+      [0, lat2]
+    ];
+
+    svg.append("path")
+      .datum({ type: "LineString", coordinates: lineData })
+      .attr("d", path)
+      .attr("stroke", "red")
+      .attr("stroke-width", 2);
+
+    // Puntos extremos
+    [[0, lat1, "blue"], [0, lat2, "orange"]].forEach(([lon, lat, color]) => {
+      const [cx, cy] = projection([lon, lat]);
+      svg.append("circle").attr("cx", cx).attr("cy", cy).attr("r", 5).attr("fill", color);
+    });
+  }
+
+  // (Opcional) Aliases si prefieres NO cambiar los onclick originales:
+  // function drawElipse(){ return drawElipse2D(); }
+  // async function drawMapaMeridiano(){ return drawMapa2D(); }
+</script>
+
+<script>
+function showArcoParalelo() {
+  document.getElementById("alg1-content").innerHTML = `
+    <h3 class="text-2xl font-semibold text-blue-300 mb-4">Cálculo de Arco Paralelo</h3>
+
+    <label class="block mb-2 text-gray-200">Elipsoide de referencia</label>
+    <select id="elip" class="mb-4 p-2 rounded text-black">
+      <option value="WGS84">WGS84</option>
+      <option value="GRS80">GRS80</option>
+      <option value="INTL">Internacional 1924</option>
+    </select>
+
+    <label class="block mb-2 text-gray-200">Formato de entrada</label>
+    <div class="flex gap-4 mb-4">
+      <label><input type="radio" name="formatoP" value="decimal" checked onchange="toggleFormatoP()"> Decimal</label>
+      <label><input type="radio" name="formatoP" value="gms" onchange="toggleFormatoP()"> GMS</label>
+    </div>
+
+    <div id="par-inputs"></div>
+
+    <div class="mt-4 flex flex-wrap gap-2">
+      <button onclick="calcArcoParalelo()" class="px-4 py-2 bg-blue-500 rounded">Calcular</button>
+      <button onclick="drawParalelo2D()" class="px-4 py-2 bg-indigo-500 rounded">Mostrar Elipse 2D</button>
+      <button onclick="drawMapaParalelo()" class="px-4 py-2 bg-purple-500 rounded">Mostrar Mapa 2D</button>
+    </div>
+
+    <div id="resultP" class="mt-6 p-4 bg-black/30 rounded text-gray-100"></div>
+
+    <canvas id="chartParalelo" class="w-full h-80 mt-6"></canvas>
+    <svg id="svgMapaPar" viewBox="0 0 600 300" class="w-full h-64 mt-6 bg-black/20"></svg>
+  `;
+
+  toggleFormatoP(); // inicia con decimal
+}
+
+function toggleFormatoP() {
+  const formato = document.querySelector('input[name="formatoP"]:checked').value;
+  const cont = document.getElementById("par-inputs");
+
+  if (formato === "decimal") {
+    cont.innerHTML = `
+      <label class="block mb-2 text-gray-200">Latitud (°)</label>
+      <input id="latP" type="number" step="any" class="mb-4 p-2 w-full rounded text-black" placeholder="Ej: 4.5" />
+      <label class="block mb-2 text-gray-200">Longitud 1 (°)</label>
+      <input id="lon1" type="number" step="any" class="mb-4 p-2 w-full rounded text-black" placeholder="Ej: -74.0" />
+      <label class="block mb-2 text-gray-200">Longitud 2 (°)</label>
+      <input id="lon2" type="number" step="any" class="mb-4 p-2 w-full rounded text-black" placeholder="Ej: -72.5" />
+    `;
+  } else {
+    cont.innerHTML = `
+      <p class="text-gray-300 mb-2">Latitud</p>
+      <div class="flex gap-2 mb-4">
+        <input id="lat_deg" type="number" placeholder="°" class="p-2 w-16 rounded text-black" />
+        <input id="lat_min" type="number" placeholder="'" class="p-2 w-16 rounded text-black" />
+        <input id="lat_sec" type="number" placeholder='"' class="p-2 w-16 rounded text-black" />
+        <select id="lat_dir" class="p-2 rounded text-black"><option>N</option><option>S</option></select>
+      </div>
+      <p class="text-gray-300 mb-2">Longitud 1</p>
+      <div class="flex gap-2 mb-4">
+        <input id="lon1_deg" type="number" placeholder="°" class="p-2 w-16 rounded text-black" />
+        <input id="lon1_min" type="number" placeholder="'" class="p-2 w-16 rounded text-black" />
+        <input id="lon1_sec" type="number" placeholder='"' class="p-2 w-16 rounded text-black" />
+        <select id="lon1_dir" class="p-2 rounded text-black"><option>E</option><option>W</option></select>
+      </div>
+      <p class="text-gray-300 mb-2">Longitud 2</p>
+      <div class="flex gap-2 mb-4">
+        <input id="lon2_deg" type="number" placeholder="°" class="p-2 w-16 rounded text-black" />
+        <input id="lon2_min" type="number" placeholder="'" class="p-2 w-16 rounded text-black" />
+        <input id="lon2_sec" type="number" placeholder='"' class="p-2 w-16 rounded text-black" />
+        <select id="lon2_dir" class="p-2 rounded text-black"><option>E</option><option>W</option></select>
+      </div>
+    `;
+  }
+}
+
+function getLatLonDecimal() {
+  const formato = document.querySelector('input[name="formatoP"]:checked').value;
+  let lat, lon1, lon2;
+
+  if (formato === "decimal") {
+    lat = parseFloat(document.getElementById("latP").value);
+    lon1 = parseFloat(document.getElementById("lon1").value);
+    lon2 = parseFloat(document.getElementById("lon2").value);
+  } else {
+    lat = toDecimal(
+      document.getElementById("lat_deg").value,
+      document.getElementById("lat_min").value,
+      document.getElementById("lat_sec").value,
+      document.getElementById("lat_dir").value
+    );
+    lon1 = toDecimal(
+      document.getElementById("lon1_deg").value,
+      document.getElementById("lon1_min").value,
+      document.getElementById("lon1_sec").value,
+      document.getElementById("lon1_dir").value
+    );
+    lon2 = toDecimal(
+      document.getElementById("lon2_deg").value,
+      document.getElementById("lon2_min").value,
+      document.getElementById("lon2_sec").value,
+      document.getElementById("lon2_dir").value
+    );
+  }
+
+  if ([lat, lon1, lon2].some(isNaN)) {
+    alert("Por favor ingresa valores válidos.");
+    return null;
+  }
+  return [lat, lon1, lon2];
+}
+
+function calcArcoParalelo() {
+  const elip = document.getElementById("elip").value;
+  const vals = getLatLonDecimal();
+  if (!vals) return;
+  const [lat, lon1, lon2] = vals;
+
+  let a, f;
+  if (elip === "WGS84") { a = 6378137.0; f = 1/298.257223563; }
+  else if (elip === "GRS80") { a = 6378137.0; f = 1/298.257222101; }
+  else { a = 6378388.0; f = 1/297.0; }
+  const e2 = 2*f - f*f;
+
+  const rad = d => d*Math.PI/180;
+  const φ = rad(lat);
+
+  // método cerrado
+  const sp = (a * Math.cos(φ)) / Math.sqrt(1 - e2 * Math.sin(φ)**2);
+  const deltaλ = rad(lon2 - lon1);
+  const cerrado = sp * deltaλ;
+
+  // método biaxial
+  const N = a / Math.sqrt(1 - e2*Math.sin(φ)**2);
+  const Q = N * Math.cos(φ);
+  const biaxial = Q * Math.abs(deltaλ);
+
+  document.getElementById("resultP").innerHTML = `
+    <p><b>Método cerrado:</b> ${cerrado.toFixed(3)} m</p>
+    <p><b>Método biaxial:</b> ${biaxial.toFixed(3)} m</p>
+  `;
+}
+
+// Gráfico en Elipse 2D
+let chartPar;
+function drawParalelo2D() {
+  const vals = getLatLonDecimal();
+  if (!vals) return;
+  const [lat, lon1, lon2] = vals;
+
+  const a = 6378.137, b = 6356.752;
+  const rad = d => d*Math.PI/180;
+
+  const φ = rad(lat);
+  const lonRange = Array.from({length:100}, (_,i)=>rad(lon1)+(rad(lon2-lon1))*i/100);
+  const paralelo = lonRange.map(l=>({x:a*Math.cos(φ)*Math.cos(l), y:a*Math.cos(φ)*Math.sin(l)}));
+
+  if (chartPar) chartPar.destroy();
+  chartPar = new Chart(document.getElementById("chartParalelo"), {
+    type:"scatter",
+    data:{
+      datasets:[
+        {label:"Paralelo", data:paralelo, showLine:true, parsing:false, borderColor:"orange", pointRadius:0},
+        {label:"Punto 1", data:[paralelo[0]], parsing:false, backgroundColor:"red", pointRadius:5},
+        {label:"Punto 2", data:[paralelo[paralelo.length-1]], parsing:false, backgroundColor:"green", pointRadius:5}
+      ]
+    },
+    options:{scales:{x:{title:{display:true,text:"X (km)"}}, y:{title:{display:true,text:"Y (km)"}}}}
+  });
+}
+
+// Mapa 2D con D3
+async function drawMapaParalelo() {
+  const vals = getLatLonDecimal();
+  if (!vals) return;
+  const [lat, lon1, lon2] = vals;
+
+  const svg = d3.select("#svgMapaPar");
+  svg.selectAll("*").remove();
+
+  const width=600, height=300;
+  const projection = d3.geoEquirectangular().scale(width/(2*Math.PI)).translate([width/2,height/2]);
+  const path = d3.geoPath().projection(projection);
+
+  const world = await d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json");
+  const countries = topojson.feature(world, world.objects.countries);
+
+  svg.append("path").datum(countries).attr("d",path).attr("fill","#cce5ff").attr("stroke","#333");
+
+  // arco paralelo
+  const lineData = [[lon1, lat],[lon2, lat]];
+  svg.append("path").datum({type:"LineString",coordinates:lineData}).attr("d",path).attr("stroke","red").attr("stroke-width",2);
+
+  [[lon1,lat,"blue"],[lon2,lat,"orange"]].forEach(([lo,la,col])=>{
+    const [cx,cy]=projection([lo,la]);
+    svg.append("circle").attr("cx",cx).attr("cy",cy).attr("r",5).attr("fill",col);
+  });
+}
+</script>
+
+<script>
+function showArea() {
+  document.getElementById("alg1-content").innerHTML = `
+    <h3 class="text-2xl font-semibold text-orange-300 mb-4">Cálculo de Área de un Cuadrilátero</h3>
+
+    <label class="block mb-2 text-gray-200">Elipsoide de referencia</label>
+    <select id="elip" class="mb-4 p-2 rounded text-black">
+      <option value="WGS84">WGS84</option>
+      <option value="GRS80">GRS80</option>
+      <option value="INTL">Internacional 1924</option>
+    </select>
+
+    <label class="block mb-2 text-gray-200">Formato de entrada</label>
+    <div class="flex gap-4 mb-4">
+      <label><input type="radio" name="formatoA" value="decimal" checked onchange="toggleFormatoA()"> Decimal</label>
+      <label><input type="radio" name="formatoA" value="gms" onchange="toggleFormatoA()"> GMS</label>
+    </div>
+
+    <div id="area-inputs"></div>
+
+    <div class="mt-4 flex flex-wrap gap-2">
+      <button onclick="calcAreaCuadrilatero()" class="px-4 py-2 bg-orange-500 rounded">Calcular</button>
+      <button onclick="drawMapaArea()" class="px-4 py-2 bg-green-500 rounded">Mostrar Mapa 2D</button>
+      <button onclick="drawEsferaArea()" class="px-4 py-2 bg-blue-500 rounded">Mostrar Esfera 3D</button>
+    </div>
+
+    <div id="resultA" class="mt-6 p-4 bg-black/30 rounded text-gray-100"></div>
+
+    <svg id="svgMapaArea" viewBox="0 0 600 300" class="w-full h-64 mt-6 bg-black/20"></svg>
+    <div id="canvasEsfera" class="w-full h-96 mt-6"></div>
+  `;
+  toggleFormatoA();
+}
+
+function toggleFormatoA() {
+  const formato = document.querySelector('input[name="formatoA"]:checked').value;
+  const cont = document.getElementById("area-inputs");
+
+  if (formato === "decimal") {
+    cont.innerHTML = `
+      <label class="block mb-2 text-gray-200">Latitud 1 (°)</label>
+      <input id="lat1A" type="number" step="any" class="mb-2 p-2 w-full rounded text-black" placeholder="Ej: 4.5" />
+      <label class="block mb-2 text-gray-200">Latitud 2 (°)</label>
+      <input id="lat2A" type="number" step="any" class="mb-2 p-2 w-full rounded text-black" placeholder="Ej: 6.5" />
+      <label class="block mb-2 text-gray-200">Longitud 1 (°)</label>
+      <input id="lon1A" type="number" step="any" class="mb-2 p-2 w-full rounded text-black" placeholder="Ej: -74.0" />
+      <label class="block mb-2 text-gray-200">Longitud 2 (°)</label>
+      <input id="lon2A" type="number" step="any" class="mb-2 p-2 w-full rounded text-black" placeholder="Ej: -72.5" />
+    `;
+  } else {
+    cont.innerHTML = `
+      <p class="text-gray-300 mb-2">Latitud 1</p>
+      <div class="flex gap-2 mb-4">
+        <input id="lat1_deg" type="number" placeholder="°" class="p-2 w-16 rounded text-black" />
+        <input id="lat1_min" type="number" placeholder="'" class="p-2 w-16 rounded text-black" />
+        <input id="lat1_sec" type="number" placeholder='"' class="p-2 w-16 rounded text-black" />
+        <select id="lat1_dir" class="p-2 rounded text-black"><option>N</option><option>S</option></select>
+      </div>
+
+      <p class="text-gray-300 mb-2">Latitud 2</p>
+      <div class="flex gap-2 mb-4">
+        <input id="lat2_deg" type="number" placeholder="°" class="p-2 w-16 rounded text-black" />
+        <input id="lat2_min" type="number" placeholder="'" class="p-2 w-16 rounded text-black" />
+        <input id="lat2_sec" type="number" placeholder='"' class="p-2 w-16 rounded text-black" />
+        <select id="lat2_dir" class="p-2 rounded text-black"><option>N</option><option>S</option></select>
+      </div>
+
+      <p class="text-gray-300 mb-2">Longitud 1</p>
+      <div class="flex gap-2 mb-4">
+        <input id="lon1_deg" type="number" placeholder="°" class="p-2 w-16 rounded text-black" />
+        <input id="lon1_min" type="number" placeholder="'" class="p-2 w-16 rounded text-black" />
+        <input id="lon1_sec" type="number" placeholder='"' class="p-2 w-16 rounded text-black" />
+        <select id="lon1_dir" class="p-2 rounded text-black"><option>E</option><option>W</option></select>
+      </div>
+
+      <p class="text-gray-300 mb-2">Longitud 2</p>
+      <div class="flex gap-2 mb-4">
+        <input id="lon2_deg" type="number" placeholder="°" class="p-2 w-16 rounded text-black" />
+        <input id="lon2_min" type="number" placeholder="'" class="p-2 w-16 rounded text-black" />
+        <input id="lon2_sec" type="number" placeholder='"' class="p-2 w-16 rounded text-black" />
+        <select id="lon2_dir" class="p-2 rounded text-black"><option>E</option><option>W</option></select>
+      </div>
+    `;
+  }
+}
+function calcAreaCuadrilatero(){
+  const vals = getCoordsArea(); 
+  if(!vals) return;
+
+  const [lat1,lat2,lon1,lon2] = vals;
+
+  // Selección de elipsoide
+  const elip = document.getElementById("elip").value;
+  let a,b,e2;
+  if(elip==="WGS84"){
+    a=6378137.0; b=6356752.3142; e2=0.00669437999014;
+  }else if(elip==="GRS80"){
+    a=6378137.0; b=6356752.3141; e2=0.00669438002290;
+  }else if(elip==="INTL"){
+    a=6378388.0; b=6356911.946; e2=0.006722670022333;
+  }
+
+  // Cálculo
+  const rad = d=>d*Math.PI/180;
+  const φ1 = rad(lat1), φ2 = rad(lat2);
+  const deltaλ = rad(Math.abs(lon2-lon1));
+
+  // Método simple geodésico (aprox)
+  const areaGeo = (Math.PI*b*b*deltaλ) * (Math.abs(Math.sin(φ2)-Math.sin(φ1)));
+
+  // Método infinitesimal simplificado
+  const areaInf = a*b*deltaλ * Math.abs(Math.sin(φ2)-Math.sin(φ1));
+
+  // Mostrar resultados
+  document.getElementById("resultA").innerHTML = `
+    <p><b>Área Geodésica:</b> ${areaGeo.toFixed(2)} m² (${(areaGeo/1e6).toFixed(2)} km²)</p>
+    <p><b>Área Infinitesimal:</b> ${areaInf.toFixed(2)} m² (${(areaInf/1e6).toFixed(2)} km²)</p>
+  `;
+}
+
+
+function getCoordsArea() {
+  const formato = document.querySelector('input[name="formatoA"]:checked').value;
+  let lat1, lat2, lon1, lon2;
+
+  if (formato === "decimal") {
+    lat1 = parseFloat(document.getElementById("lat1A").value);
+    lat2 = parseFloat(document.getElementById("lat2A").value);
+    lon1 = parseFloat(document.getElementById("lon1A").value);
+    lon2 = parseFloat(document.getElementById("lon2A").value);
+  } else {
+    lat1 = toDecimal(
+      document.getElementById("lat1_deg").value,
+      document.getElementById("lat1_min").value,
+      document.getElementById("lat1_sec").value,
+      document.getElementById("lat1_dir").value
+    );
+    lat2 = toDecimal(
+      document.getElementById("lat2_deg").value,
+      document.getElementById("lat2_min").value,
+      document.getElementById("lat2_sec").value,
+      document.getElementById("lat2_dir").value
+    );
+    lon1 = toDecimal(
+      document.getElementById("lon1_deg").value,
+      document.getElementById("lon1_min").value,
+      document.getElementById("lon1_sec").value,
+      document.getElementById("lon1_dir").value
+    );
+    lon2 = toDecimal(
+      document.getElementById("lon2_deg").value,
+      document.getElementById("lon2_min").value,
+      document.getElementById("lon2_sec").value,
+      document.getElementById("lon2_dir").value
+    );
+  }
+
+  if ([lat1, lat2, lon1, lon2].some(isNaN)) {
+    alert("Ingresa valores válidos.");
+    return null;
+  }
+  return [lat1, lat2, lon1, lon2];
+}
+
+
+  // Método simple geodésico (aprox)
+  // Método simple geodésico (aprox)
+  const rad = d=>d*Math.PI/180;
+  const φ1=rad(lat1), φ2=rad(lat2);
+  const areaGeo = (Math.PI*b*b*rad(deltaλ))*(Math.abs(Math.sin(φ2)-Math.sin(φ1)));
+
+  // Método “infinitesimal” simplificado
+  const areaInf = a*b*rad(deltaλ)*Math.abs(Math.sin(φ2)-Math.sin(φ1));
+
+  document.getElementById("resultA").innerHTML = ` ... `; `
+    <p><b>Área Geodésica:</b> ${areaGeo.toFixed(2)} m² (${(areaGeo/1e6).toFixed(2)} km²)</p>
+    <p><b>Área Infinitesimal:</b> ${areaInf.toFixed(2)} m² (${(areaInf/1e6).toFixed(2)} km²)</p>
+  `;
+
+
+// ===== MAPA 2D D3 =====
+async function drawMapaArea() {
+  const vals=getCoordsArea(); if(!vals)return;
+  const [lat1,lat2,lon1,lon2]=vals;
+
+  const svg=d3.select("#svgMapaArea");
+  svg.selectAll("*").remove();
+
+  const width=600,height=300;
+  const projection=d3.geoEquirectangular().scale(width/(2*Math.PI)).translate([width/2,height/2]);
+  const path=d3.geoPath().projection(projection);
+
+  const world=await d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json");
+  const countries=topojson.feature(world,world.objects.countries);
+
+  svg.append("path").datum(countries).attr("d",path).attr("fill","#cce5ff").attr("stroke","#333");
+
+  const poly=[
+    [lon1,lat1],[lon2,lat1],[lon2,lat2],[lon1,lat2],[lon1,lat1]
+  ];
+  svg.append("path").datum({type:"Polygon",coordinates:[poly]}).attr("d",path).attr("stroke","red").attr("fill","none").attr("stroke-width",2);
+}
+
+// ===== ESFERA 3D Three.js =====
+function drawEsferaArea(){
+  const vals=getCoordsArea(); if(!vals)return;
+  const [lat1,lat2,lon1,lon2]=vals;
+
+  const container=document.getElementById("canvasEsfera");
+  container.innerHTML="";
+
+  const scene=new THREE.Scene();
+  const camera=new THREE.PerspectiveCamera(
+    45,
+    container.clientWidth/container.clientHeight,
+    0.1,
+    1000
+  );
+  const renderer=new THREE.WebGLRenderer({antialias:true});
+  renderer.setSize(container.clientWidth||600, container.clientHeight||400);
+  container.appendChild(renderer.domElement);
+
+  // esfera
+  const sphere=new THREE.Mesh(
+    new THREE.SphereGeometry(1,64,64),
+    new THREE.MeshPhongMaterial({color:0x87CEEB,opacity:0.7,transparent:true})
+  );
+  scene.add(sphere);
+
+  // luz
+  const light=new THREE.DirectionalLight(0xffffff,1);
+  light.position.set(5,5,5);
+  scene.add(light);
+
+  camera.position.set(0,0,6);
+
+  // controles
+  let controls;
+  if (THREE.OrbitControls) {
+    controls=new THREE.OrbitControls(camera,renderer.domElement);
+  }
+
+  // conversión lat/lon -> xyz
+  function latLonToXYZ(lat,lon){
+    const rad=Math.PI/180;
+    const φ=lat*rad, λ=lon*rad;
+    return new THREE.Vector3(
+      Math.cos(φ)*Math.cos(λ),
+      Math.sin(φ),
+      Math.cos(φ)*Math.sin(λ)
+    );
+  }
+
+  // cuadrilátero
+  const corners=[
+    latLonToXYZ(lat1,lon1),
+    latLonToXYZ(lat1,lon2),
+    latLonToXYZ(lat2,lon2),
+    latLonToXYZ(lat2,lon1)
+  ];
+  const material=new THREE.LineBasicMaterial({color:0xff0000});
+  const geometry=new THREE.BufferGeometry().setFromPoints(corners);
+  const line=new THREE.LineLoop(geometry,material);
+  scene.add(line);
+
+  // animación
+  function animate(){
+    requestAnimationFrame(animate);
+    if (controls) controls.update();
+    renderer.render(scene,camera);
+  }
+  animate();
+}
+
+
+</script>

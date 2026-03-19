@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Algoritmo 3 · Bisección y Trisección</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tsparticles@2.12.0/tsparticles.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-900 text-white flex">
+
+  <!-- Sidebar -->
+  <aside class="w-64 h-screen bg-gradient-to-b from-gray-800 to-gray-900 p-6 shadow-lg flex flex-col z-20">
+    <h2 class="text-2xl font-bold text-emerald-400 text-center mb-8">🌍 Geodesia Geométrica</h2>
+    <nav class="space-y-3 flex-1">
+      <a href="geometrica.html" class="block px-4 py-3 rounded-lg hover:bg-emerald-600 transition">🏠 Inicio</a>
+      <a href="algoritmo1.html" class="block px-4 py-3 rounded-lg hover:bg-emerald-600 transition">🧮 Algoritmo 1 · Arcos y Área</a>
+      <a href="algoritmo2.html" class="block px-4 py-3 rounded-lg hover:bg-emerald-600 transition">📏 Algoritmo 2 · Nivelación</a>
+      <a href="algoritmo3.html" class="block px-4 py-3 rounded-lg bg-emerald-500 text-black font-semibold">✂️ Algoritmo 3 · Bisección/Trisección</a>
+      <a href="algoritmo4.html" class="block px-4 py-3 rounded-lg hover:bg-emerald-600 transition">🗺️ Algoritmo 4 · UTM</a>
+      <a href="algoritmo5.html" class="block px-4 py-3 rounded-lg hover:bg-emerald-600 transition">🧭 Algoritmo 5 · Latitud Media</a>
+    </nav>
+    <a href="../index.html" class="mt-6 block text-center px-4 py-3 rounded-lg bg-white text-gray-800 font-bold hover:bg-gray-300 transition">⬅ Volver al inicio</a>
+  </aside>
+
+  <!-- Contenido -->
+  <main class="flex-1 relative overflow-hidden">
+    <!-- Fondo partículas -->
+    <div id="tsparticles" class="absolute inset-0"></div>
+
+    <!-- Sección central -->
+    <section class="relative z-10 flex flex-col items-center justify-center min-h-screen p-10 text-center">
+      <h2 class="text-4xl font-bold text-emerald-400 mb-6">Algoritmo 3 · Bisección y Trisección</h2>
+
+      <!-- Menú de métodos -->
+      <div class="flex gap-4 mb-8">
+        <button onclick="showBiseccion()" class="px-6 py-3 bg-indigo-500 text-white rounded-lg hover:bg-indigo-400">Bisección</button>
+        <button onclick="showTriseccion()" class="px-6 py-3 bg-pink-500 text-white rounded-lg hover:bg-pink-400">Trisección</button>
+      </div>
+
+      <!-- Panel Bisección -->
+      <section id="panel-bis" class="w-full max-w-5xl bg-white/30 backdrop-blur-lg text-black rounded-2xl shadow p-6">
+        <h2 class="mb-3 text-xl font-semibold text-indigo-700">Bisección</h2>
+        <div class="grid grid-cols-2 gap-4">
+          <div><label>NA (A)</label><input id="bis-na" type="number" class="mt-1 w-full rounded border px-2 py-1" /></div>
+          <div><label>EA (A)</label><input id="bis-ea" type="number" class="mt-1 w-full rounded border px-2 py-1" /></div>
+          <div><label>NB (B)</label><input id="bis-nb" type="number" class="mt-1 w-full rounded border px-2 py-1" /></div>
+          <div><label>EB (B)</label><input id="bis-eb" type="number" class="mt-1 w-full rounded border px-2 py-1" /></div>
+        </div>
+
+        <!-- Formato de ángulos -->
+        <div class="mt-4">
+          <label>Formato de ángulos:</label>
+          <select id="bis-format" onchange="toggleBisFormat()" class="w-full mt-1 rounded border px-2 py-1">
+            <option value="decimal">Decimal (°)</option>
+            <option value="dms">Grados, Minutos, Segundos</option>
+          </select>
+        </div>
+
+        <!-- Ángulo α -->
+        <div id="bis-alpha-decimal" class="mt-4">
+          <label>α (°)</label>
+          <input id="bis-alpha-dec" type="number" placeholder="decimal" class="mt-1 w-full rounded border px-2 py-1" />
+        </div>
+        <div id="bis-alpha-dms" class="hidden mt-4 grid grid-cols-3 gap-2">
+          <input id="bis-alpha-d" type="number" placeholder="°" class="rounded border px-2 py-1" />
+          <input id="bis-alpha-m" type="number" placeholder="′" class="rounded border px-2 py-1" />
+          <input id="bis-alpha-s" type="number" placeholder="″" class="rounded border px-2 py-1" />
+        </div>
+
+        <!-- Ángulo β -->
+        <div id="bis-beta-decimal" class="mt-4">
+          <label>β (°)</label>
+          <input id="bis-beta-dec" type="number" placeholder="decimal" class="mt-1 w-full rounded border px-2 py-1" />
+        </div>
+        <div id="bis-beta-dms" class="hidden mt-4 grid grid-cols-3 gap-2">
+          <input id="bis-beta-d" type="number" placeholder="°" class="rounded border px-2 py-1" />
+          <input id="bis-beta-m" type="number" placeholder="′" class="rounded border px-2 py-1" />
+          <input id="bis-beta-s" type="number" placeholder="″" class="rounded border px-2 py-1" />
+        </div>
+
+        <div class="mt-6 flex gap-3">
+          <button onclick="calcularBiseccion()" class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded text-white">Calcular</button>
+          <button onclick="limpiarBiseccion()" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded">Limpiar</button>
+        </div>
+        <div id="bis-msg" class="mt-4 text-sm"></div>
+        <div id="bis-out" class="hidden mt-4 p-4 bg-indigo-50 rounded"></div>
+        <canvas id="bis-chart" class="mt-6"></canvas>
+      </section>
+
+      <!-- Panel Trisección -->
+      <section id="panel-tri" class="hidden w-full max-w-5xl bg-white/30 backdrop-blur-lg text-black rounded-2xl shadow p-6">
+        <h2 class="mb-3 text-xl font-semibold text-pink-700">Trisección</h2>
+        <div class="grid grid-cols-2 gap-4">
+          <div><label>NA (A)</label><input id="tri-na" type="number" class="mt-1 w-full rounded border px-2 py-1" /></div>
+          <div><label>EA (A)</label><input id="tri-ea" type="number" class="mt-1 w-full rounded border px-2 py-1" /></div>
+          <div><label>NB (B)</label><input id="tri-nb" type="number" class="mt-1 w-full rounded border px-2 py-1" /></div>
+          <div><label>EB (B)</label><input id="tri-eb" type="number" class="mt-1 w-full rounded border px-2 py-1" /></div>
+          <div><label>NC (C)</label><input id="tri-nc" type="number" class="mt-1 w-full rounded border px-2 py-1" /></div>
+          <div><label>EC (C)</label><input id="tri-ec" type="number" class="mt-1 w-full rounded border px-2 py-1" /></div>
+        </div>
+
+        <!-- Formato de ángulos -->
+        <div class="mt-4">
+          <label>Formato de ángulos:</label>
+          <select id="tri-format" onchange="toggleTriFormat()" class="w-full mt-1 rounded border px-2 py-1">
+            <option value="decimal">Decimal (°)</option>
+            <option value="dms">Grados, Minutos, Segundos</option>
+          </select>
+        </div>
+
+        <!-- Ángulo X -->
+        <div id="tri-x-decimal" class="mt-4">
+          <label>X (°)</label>
+          <input id="tri-x-dec" type="number" placeholder="decimal" class="mt-1 w-full rounded border px-2 py-1" />
+        </div>
+        <div id="tri-x-dms" class="hidden mt-4 grid grid-cols-3 gap-2">
+          <input id="tri-x-d" type="number" placeholder="°" class="rounded border px-2 py-1" />
+          <input id="tri-x-m" type="number" placeholder="′" class="rounded border px-2 py-1" />
+          <input id="tri-x-s" type="number" placeholder="″" class="rounded border px-2 py-1" />
+        </div>
+
+        <!-- Ángulo Y -->
+        <div id="tri-y-decimal" class="mt-4">
+          <label>Y (°)</label>
+          <input id="tri-y-dec" type="number" placeholder="decimal" class="mt-1 w-full rounded border px-2 py-1" />
+        </div>
+        <div id="tri-y-dms" class="hidden mt-4 grid grid-cols-3 gap-2">
+          <input id="tri-y-d" type="number" placeholder="°" class="rounded border px-2 py-1" />
+          <input id="tri-y-m" type="number" placeholder="′" class="rounded border px-2 py-1" />
+          <input id="tri-y-s" type="number" placeholder="″" class="rounded border px-2 py-1" />
+        </div>
+
+        <!-- Ángulo Z -->
+        <div id="tri-z-decimal" class="mt-4">
+          <label>Z (°)</label>
+          <input id="tri-z-dec" type="number" placeholder="decimal" class="mt-1 w-full rounded border px-2 py-1" />
+        </div>
+        <div id="tri-z-dms" class="hidden mt-4 grid grid-cols-3 gap-2">
+          <input id="tri-z-d" type="number" placeholder="°" class="rounded border px-2 py-1" />
+          <input id="tri-z-m" type="number" placeholder="′" class="rounded border px-2 py-1" />
+          <input id="tri-z-s" type="number" placeholder="″" class="rounded border px-2 py-1" />
+        </div>
+
+        <div class="mt-6 flex gap-3">
+          <button onclick="calcularTriseccion()" class="bg-pink-600 hover:bg-pink-700 px-4 py-2 rounded text-white">Calcular</button>
+          <button onclick="limpiarTriseccion()" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded">Limpiar</button>
+        </div>
+        <div id="tri-msg" class="mt-4 text-sm"></div>
+        <div id="tri-out" class="hidden mt-4 p-4 bg-pink-50 rounded"></div>
+        <canvas id="tri-chart" class="mt-6"></canvas>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    // Partículas
+    tsParticles.load("tsparticles", {
+      background: { color: "transparent" },
+      fpsLimit: 60,
+      particles: {
+        color: { value: "#00ffcc" },
+        links: { color: "#00ffcc", distance: 150, enable: true, opacity: 0.4, width: 1 },
+        move: { enable: true, speed: 2, outModes: "bounce" },
+        number: { value: 60, density: { enable: true, area: 800 } },
+        opacity: { value: 0.6 },
+        shape: { type: "circle" },
+        size: { value: { min: 1, max: 4 } }
+      },
+      interactivity: {
+        events: { onHover: { enable: true, mode: "repulse" } },
+        modes: { repulse: { distance: 100, duration: 0.4 } }
+      },
+      detectRetina: true
+    });
+
+    const cot = x => 1 / Math.tan(x);
+    let bisChart, triChart;
+
+    // Toggle formatos
+    function toggleBisFormat(){
+      const f = document.getElementById("bis-format").value;
+      document.getElementById("bis-alpha-decimal").classList.toggle("hidden", f!=="decimal");
+      document.getElementById("bis-alpha-dms").classList.toggle("hidden", f!=="dms");
+      document.getElementById("bis-beta-decimal").classList.toggle("hidden", f!=="decimal");
+      document.getElementById("bis-beta-dms").classList.toggle("hidden", f!=="dms");
+    }
+    function toggleTriFormat(){
+      const f = document.getElementById("tri-format").value;
+      ["x","y","z"].forEach(axis=>{
+        document.getElementById(`tri-${axis}-decimal`).classList.toggle("hidden", f!=="decimal");
+        document.getElementById(`tri-${axis}-dms`).classList.toggle("hidden", f!=="dms");
+      });
+    }
+
+    // Conversión DMS -> decimal
+    function dmsToDecimal(d,m,s){
+      return d + (m/60) + (s/3600);
+    }
+
+    function showBiseccion() {
+      document.querySelector('#panel-bis').classList.remove('hidden');
+      document.querySelector('#panel-tri').classList.add('hidden');
+    }
+    function showTriseccion() {
+      document.querySelector('#panel-tri').classList.remove('hidden');
+      document.querySelector('#panel-bis').classList.add('hidden');
+    }
+
+    function limpiarBiseccion() {
+      ['bis-na','bis-ea','bis-nb','bis-eb','bis-alpha-dec','bis-beta-dec',
+       'bis-alpha-d','bis-alpha-m','bis-alpha-s',
+       'bis-beta-d','bis-beta-m','bis-beta-s'].forEach(id=>{
+        const el=document.getElementById(id); if(el) el.value="";
+      });
+      document.querySelector('#bis-msg').innerHTML='';
+      document.querySelector('#bis-out').classList.add('hidden');
+      if(bisChart) bisChart.destroy();
+    }
+
+    function calcularBiseccion() {
+      try {
+        const NA = +document.getElementById('bis-na').value;
+        const EA = +document.getElementById('bis-ea').value;
+        const NB = +document.getElementById('bis-nb').value;
+        const EB = +document.getElementById('bis-eb').value;
+
+        const format = document.getElementById("bis-format").value;
+        let alphaDeg, betaDeg;
+        if(format==="decimal"){
+          alphaDeg = +document.getElementById("bis-alpha-dec").value;
+          betaDeg  = +document.getElementById("bis-beta-dec").value;
+        }else{
+          alphaDeg = dmsToDecimal(
+            +document.getElementById("bis-alpha-d").value,
+            +document.getElementById("bis-alpha-m").value,
+            +document.getElementById("bis-alpha-s").value
+          );
+          betaDeg = dmsToDecimal(
+            +document.getElementById("bis-beta-d").value,
+            +document.getElementById("bis-beta-m").value,
+            +document.getElementById("bis-beta-s").value
+          );
+        }
+
+        const alpha = alphaDeg * Math.PI / 180;
+        const beta  = betaDeg * Math.PI / 180;
+
+        if([NA,EA,NB,EB,alpha,beta].some(v=>!isFinite(v))) 
+          throw new Error('Complete todos los campos.');
+
+        const EP=((NB-NA)+EA*cot(beta)+EB*cot(alpha))/(cot(alpha)+cot(beta));
+        const NP=((EA-EB)+NA*cot(beta)+NB*cot(alpha))/(cot(alpha)+cot(beta));
+        const dAB=Math.hypot(NB-NA,EB-EA);
+
+        document.querySelector('#bis-out').innerHTML=`
+          Distancia AB: <b>${dAB.toFixed(3)}</b> m<br>
+          EP: <b>${EP.toFixed(3)}</b> m<br>
+          NP: <b>${NP.toFixed(3)}</b> m`;
+        document.querySelector('#bis-out').classList.remove('hidden');
+
+        if(bisChart) bisChart.destroy();
+        bisChart=new Chart(document.getElementById('bis-chart'),{
+          data:{datasets:[
+            {type:'scatter',label:'A',data:[{x:EA,y:NA}],backgroundColor:'green'},
+            {type:'scatter',label:'B',data:[{x:EB,y:NB}],backgroundColor:'blue'},
+            {type:'scatter',label:'P',data:[{x:EP,y:NP}],backgroundColor:'red'},
+            {type:'line',label:'A-B',data:[{x:EA,y:NA},{x:EB,y:NB}],borderColor:'black'},
+            {type:'line',label:'A-P',data:[{x:EA,y:NA},{x:EP,y:NP}],borderColor:'orange',borderDash:[6,6]},
+            {type:'line',label:'B-P',data:[{x:EB,y:NB},{x:EP,y:NP}],borderColor:'purple',borderDash:[6,6]}
+          ]},
+          options:{scales:{x:{title:{display:true,text:'Este (m)'}},y:{title:{display:true,text:'Norte (m)'}}}}
+        });
+      } catch(e) {
+        document.querySelector('#bis-msg').innerHTML=`<span class='text-red-500'>${e.message}</span>`;
+      }
+    }
+
+    function limpiarTriseccion() {
+      ["tri-na","tri-ea","tri-nb","tri-eb","tri-nc","tri-ec",
+       "tri-x-dec","tri-y-dec","tri-z-dec",
+       "tri-x-d","tri-x-m","tri-x-s",
+       "tri-y-d","tri-y-m","tri-y-s",
+       "tri-z-d","tri-z-m","tri-z-s"
+      ].forEach(id=>{
+        const el=document.getElementById(id); if(el) el.value="";
+      });
+      document.querySelector('#tri-msg').innerHTML='';
+      document.querySelector('#tri-out').classList.add('hidden');
+      if(triChart) triChart.destroy();
+    }
+
+function calcularTriseccion() {
+  try {
+    const NA = +document.getElementById('tri-na').value;
+    const EA = +document.getElementById('tri-ea').value;
+    const NB = +document.getElementById('tri-nb').value;
+    const EB = +document.getElementById('tri-eb').value;
+    const NC = +document.getElementById('tri-nc').value;
+    const EC = +document.getElementById('tri-ec').value;
+
+    const format = document.getElementById("tri-format").value;
+    let xDeg, yDeg, zDeg;
+
+    if (format === "decimal") {
+      xDeg = +document.getElementById("tri-x-dec").value;
+      yDeg = +document.getElementById("tri-y-dec").value;
+      zDeg = +document.getElementById("tri-z-dec").value;
+    } else {
+      xDeg = dmsToDecimal(
+        +document.getElementById("tri-x-d").value,
+        +document.getElementById("tri-x-m").value,
+        +document.getElementById("tri-x-s").value
+      );
+      yDeg = dmsToDecimal(
+        +document.getElementById("tri-y-d").value,
+        +document.getElementById("tri-y-m").value,
+        +document.getElementById("tri-y-s").value
+      );
+      zDeg = dmsToDecimal(
+        +document.getElementById("tri-z-d").value,
+        +document.getElementById("tri-z-m").value,
+        +document.getElementById("tri-z-s").value
+      );
+    }
+
+    if ([NA, EA, NB, EB, NC, EC, xDeg, yDeg, zDeg].some(v => !isFinite(v))) 
+      throw new Error('Complete todos los campos.');
+
+    const XD = xDeg * Math.PI / 180;
+    const YD = yDeg * Math.PI / 180;
+    const ZD = zDeg * Math.PI / 180;
+
+    // === Fórmulas traducidas del Python (usando atan2 para seguridad) ===
+    const a = Math.atan2(EC - EA, NC - NA) - Math.atan2(EB - EA, NB - NA);
+    const b = Math.atan2(EA - EB, NA - NB) - Math.atan2(EC - EB, NC - NB);
+    const c = Math.atan2(EB - EC, NB - NC) - Math.atan2(EA - EC, NA - NC);
+
+    const k1 = 1 / ((1 / Math.tan(a)) - (1 / Math.tan(XD)));
+    const k2 = 1 / ((1 / Math.tan(b)) - (1 / Math.tan(YD)));
+    const k3 = 1 / ((1 / Math.tan(c)) - (1 / Math.tan(ZD)));
+
+    const EP = (k1 * EA + k2 * EB + k3 * EC) / (k1 + k2 + k3);
+    const NP = (k1 * NA + k2 * NB + k3 * NC) / (k1 + k2 + k3);
+
+    document.querySelector('#tri-out').innerHTML =
+      `EP: <b>${EP.toFixed(3)}</b> m<br>NP: <b>${NP.toFixed(3)}</b> m`;
+    document.querySelector('#tri-out').classList.remove('hidden');
+
+    // === Gráfico ===
+    if (triChart) triChart.destroy();
+    triChart = new Chart(document.getElementById('tri-chart'), {
+      data: {
+        datasets: [
+          { type: 'scatter', label: 'A', data: [{ x: EA, y: NA }], backgroundColor: 'green' },
+          { type: 'scatter', label: 'B', data: [{ x: EB, y: NB }], backgroundColor: 'blue' },
+          { type: 'scatter', label: 'C', data: [{ x: EC, y: NC }], backgroundColor: 'orange' },
+          { type: 'scatter', label: 'P', data: [{ x: EP, y: NP }], backgroundColor: 'red' },
+          { type: 'line', label: 'A-B', data: [{ x: EA, y: NA }, { x: EB, y: NB }], borderColor: 'black' },
+          { type: 'line', label: 'A-C', data: [{ x: EA, y: NA }, { x: EC, y: NC }], borderColor: 'black' },
+          { type: 'line', label: 'B-C', data: [{ x: EB, y: NB }, { x: EC, y: NC }], borderColor: 'black' },
+          { type: 'line', label: 'A-P', data: [{ x: EA, y: NA }, { x: EP, y: NP }], borderColor: 'orange', borderDash: [6, 6] },
+          { type: 'line', label: 'B-P', data: [{ x: EB, y: NB }, { x: EP, y: NP }], borderColor: 'purple', borderDash: [6, 6] },
+          { type: 'line', label: 'C-P', data: [{ x: EC, y: NC }, { x: EP, y: NP }], borderColor: 'brown', borderDash: [6, 6] }
+        ]
+      },
+      options: {
+        scales: {
+          x: { title: { display: true, text: 'Este (m)' } },
+          y: { title: { display: true, text: 'Norte (m)' } }
+        }
+      }
+    });
+
+  } catch (e) {
+    document.querySelector('#tri-msg').innerHTML = `<span class='text-red-500'>${e.message}</span>`;
+  }
+}
+
+</script>
+</body>
+</html>

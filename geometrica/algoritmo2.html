@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Algoritmo 2 · Nivelación</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tsparticles@2.12.0/tsparticles.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-900 text-white flex">
+
+  <!-- Sidebar -->
+  <aside class="w-64 h-screen bg-gradient-to-b from-gray-800 to-gray-900 p-6 shadow-lg flex flex-col z-20">
+    <h2 class="text-2xl font-bold text-emerald-400 text-center mb-8">🌍 Geodesia Geométrica</h2>
+    <nav class="space-y-3 flex-1">
+      <a href="geometrica.html" class="block px-4 py-3 rounded-lg hover:bg-emerald-600 transition">🏠 Inicio</a>
+      <a href="algoritmo1.html" class="block px-4 py-3 rounded-lg hover:bg-emerald-600 transition">🧮 Algoritmo 1 · Arcos y Área</a>
+      <a href="algoritmo2.html" class="block px-4 py-3 rounded-lg bg-emerald-500 text-black font-semibold">📏 Algoritmo 2 · Nivelación</a>
+      <a href="algoritmo3.html" class="block px-4 py-3 rounded-lg hover:bg-emerald-600 transition">✂️ Algoritmo 3 · Bisección/Trisección</a>
+      <a href="algoritmo4.html" class="block px-4 py-3 rounded-lg hover:bg-emerald-600 transition">🗺️ Algoritmo 4 · UTM</a>
+      <a href="algoritmo5.html" class="block px-4 py-3 rounded-lg hover:bg-emerald-600 transition">🧭 Algoritmo 5 · Latitud Media</a>
+    </nav>
+    <a href="../index.html" class="mt-6 block text-center px-4 py-3 rounded-lg bg-white text-gray-800 font-bold hover:bg-gray-300 transition">⬅ Volver al inicio</a>
+  </aside>
+
+  <!-- Contenido -->
+  <main class="flex-1 relative overflow-hidden">
+    <!-- Fondo partículas -->
+    <div id="tsparticles" class="absolute inset-0"></div>
+    <!-- Sección central -->
+    <section class="relative z-10 flex flex-col items-center justify-center min-h-screen p-10 text-center">
+      <h2 class="text-4xl font-bold text-emerald-400 mb-6">Algoritmo 2 · Nivelación Geodésica</h2>
+      <!-- Menú de métodos -->
+      <div class="flex gap-4 mb-8">
+        <button onclick="showAlturaInstrumental()" class="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-400">Altura Instrumental</button>
+        <button onclick="showSubesBajas()" class="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-400">Subes y Bajas</button>
+      </div>
+      <!-- Contenedor dinámico -->
+      <div id="alg2-content" class="w-full max-w-4xl bg-white/10 backdrop-blur-lg p-8 rounded-xl shadow-lg text-left">
+        <p class="text-gray-300">Selecciona un método de nivelación para comenzar.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Script partículas -->
+  <script>
+    tsParticles.load("tsparticles", {
+      background: { color: "transparent" },
+      fpsLimit: 60,
+      particles: {
+        color: { value: "#00ffcc" },
+        links: { color: "#00ffcc", distance: 150, enable: true, opacity: 0.4, width: 1 },
+        move: { enable: true, speed: 2, outModes: "bounce" },
+        number: { value: 60, density: { enable: true, area: 800 } },
+        opacity: { value: 0.6 },
+        shape: { type: "circle" },
+        size: { value: { min: 1, max: 4 } }
+      },
+      interactivity: {
+        events: { onHover: { enable: true, mode: "repulse" } },
+        modes: { repulse: { distance: 100, duration: 0.4 } }
+      },
+      detectRetina: true
+    });
+  </script>
+
+  <!-- Script de Nivelación -->
+  <<script>
+/* ================== ALTURA INSTRUMENTAL ================== */
+let datosHI = [];
+let ultimaCotaHI = null;
+let distanciaAcumuladaHI = 0;
+
+function showAlturaInstrumental() {
+  document.getElementById("alg2-content").innerHTML = `
+    <h3 class="text-2xl font-bold text-green-400 mb-4">Altura Instrumental</h3>
+    <div class="space-y-4">
+      <button onclick="agregarEstacionHI()" class="px-4 py-2 bg-blue-500 rounded">Agregar Estación</button>
+      <button onclick="calcularHI()" class="px-4 py-2 bg-orange-500 rounded">Calcular</button>
+      <div id="tablaHI" class="mt-6"></div>
+      <canvas id="graficoHI" class="mt-6"></canvas>
+    </div>
+  `;
+}
+
+function agregarEstacionHI() {
+  const estacion = prompt("Nombre estación:");
+  const punto = prompt("Punto visado:");
+  const vmas = parseFloat(prompt("Vista más (V+):")) || 0;
+  const vmenos = parseFloat(prompt("Vista menos (V-):")) || 0;
+  const dist = parseFloat(prompt("Distancia al siguiente punto (m):")) || 0;
+
+  if (datosHI.length === 0) {
+    ultimaCotaHI = parseFloat(prompt("Cota inicial:")) || 0;
+    distanciaAcumuladaHI = 0;
+  }
+
+  const cota = ultimaCotaHI - vmenos;
+  const cotaHI = cota + vmas;
+  distanciaAcumuladaHI += dist;
+
+  datosHI.push({ estacion, punto, vmas, vmenos, cota, cotaHI, distancia: distanciaAcumuladaHI });
+
+  ultimaCotaHI = cotaHI;
+  mostrarTablaHI();
+
+  // Preguntar por vistas intermedias
+  const numVI = parseInt(prompt("¿Cuántas vistas intermedias hay en esta estación?")) || 0;
+  for (let i = 1; i <= numVI; i++) {
+    const puntoVI = prompt(`Punto Vista Intermedia ${i}:`);
+    const vi = parseFloat(prompt(`Vista Intermedia (VI) ${i}:`)) || 0;
+    const distVI = parseFloat(prompt(`Distancia desde la estación al punto ${i} (m):`)) || 0;
+
+    const cotaIntermedia = ultimaCotaHI - vi;
+
+    datosHI.push({
+      estacion: "",
+      punto: puntoVI,
+      vmas: 0,
+      vmenos: vi,
+      cotaHI: ultimaCotaHI,
+      cota: cotaIntermedia,
+      distancia: distanciaAcumuladaHI + distVI
+    });
+  }
+
+  mostrarTablaHI();
+}
+
+function mostrarTablaHI() {
+  let html = `
+    <table class="w-full text-left bg-gray-700 rounded">
+      <tr class="bg-gray-800">
+        <th class="p-2">Estación</th><th class="p-2">Punto</th><th class="p-2">V+</th><th class="p-2">V-</th><th class="p-2">Cota HI</th><th class="p-2">Cota</th><th class="p-2">Distancia</th>
+      </tr>`;
+  datosHI.forEach(d => {
+    html += `<tr>
+      <td class="p-2">${d.estacion}</td>
+      <td class="p-2">${d.punto}</td>
+      <td class="p-2">${d.vmas}</td>
+      <td class="p-2">${d.vmenos}</td>
+      <td class="p-2">${d.cotaHI ? d.cotaHI.toFixed(2) : "-"}</td>
+      <td class="p-2">${d.cota.toFixed(2)}</td>
+      <td class="p-2">${d.distancia.toFixed(2)}</td>
+    </tr>`;
+  });
+  html += `</table>`;
+  document.getElementById("tablaHI").innerHTML = html;
+}
+
+function calcularHI() {
+  const ctx = document.getElementById("graficoHI").getContext("2d");
+  new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: datosHI.map(d => d.distancia),
+      datasets: [{
+        label: "Perfil de Cotas",
+        data: datosHI.map(d => d.cota),
+        borderColor: "rgb(34,197,94)",
+        fill: false,
+        tension: 0.3
+      }]
+    },
+    options: {
+      scales: {
+        x: { title: { display: true, text: "Distancia acumulada (m)" } },
+        y: { title: { display: true, text: "Cota (m)" } }
+      }
+    }
+  });
+}
+
+/* ================== SUBES Y BAJAS ================== */
+let datosSB = [];
+let ultimaCotaSB = null;
+let ultimaVistaMas = null;
+let distanciaAcumuladaSB = 0;
+
+function showSubesBajas() {
+  document.getElementById("alg2-content").innerHTML = `
+    <h3 class="text-2xl font-bold text-blue-400 mb-4">Subes y Bajas</h3>
+    <div class="space-y-4">
+      <button onclick="agregarEstacionSB()" class="px-4 py-2 bg-blue-500 rounded">Agregar Estación</button>
+      <button onclick="calcularSB()" class="px-4 py-2 bg-orange-500 rounded">Calcular</button>
+      <div id="tablaSB" class="mt-6"></div>
+      <canvas id="graficoSB" class="mt-6"></canvas>
+    </div>
+  `;
+}
+
+function agregarEstacionSB() {
+  const estacion = prompt("Nombre estación:");
+  const punto = prompt("Punto visado:");
+  const vmas = parseFloat(prompt("Vista más (V+):")) || 0;
+  const vmenos = parseFloat(prompt("Vista menos (V-):")) || 0;
+  const dist = parseFloat(prompt("Distancia al siguiente punto (m):")) || 0;
+
+  let sube = 0, baja = 0, cotaNueva;
+
+  if (datosSB.length === 0) {
+    ultimaCotaSB = parseFloat(prompt("Cota inicial:")) || 0;
+    cotaNueva = ultimaCotaSB;
+    ultimaVistaMas = vmas;
+    distanciaAcumuladaSB = 0;
+  } else {
+    const diferencia = ultimaVistaMas - vmenos;
+    if (diferencia > 0) sube = diferencia;
+    if (diferencia < 0) baja = Math.abs(diferencia);
+
+    cotaNueva = ultimaCotaSB + sube - baja;
+    distanciaAcumuladaSB += dist;
+  }
+
+  datosSB.push({ estacion, punto, vmas, vmenos, sube, baja, cota: cotaNueva, distancia: distanciaAcumuladaSB });
+
+  ultimaCotaSB = cotaNueva;
+  ultimaVistaMas = vmas;
+
+  mostrarTablaSB();
+
+  // Preguntar por vistas intermedias
+  const numVI = parseInt(prompt("¿Cuántas vistas intermedias hay en esta estación?")) || 0;
+  for (let i = 1; i <= numVI; i++) {
+    const puntoVI = prompt(`Punto Vista Intermedia ${i}:`);
+    const vi = parseFloat(prompt(`Vista Intermedia (VI) ${i}:`)) || 0;
+    const distVI = parseFloat(prompt(`Distancia desde la estación al punto ${i} (m):`)) || 0;
+
+    const diferencia = ultimaVistaMas - vi;
+    let subeVI = 0, bajaVI = 0;
+    if (diferencia > 0) subeVI = diferencia;
+    if (diferencia < 0) bajaVI = Math.abs(diferencia);
+
+    const cotaIntermedia = ultimaCotaSB + subeVI - bajaVI;
+
+    datosSB.push({
+      estacion: estacion,
+      punto: puntoVI,
+      vmas: 0,
+      vmenos: vi,
+      sube: subeVI,
+      baja: bajaVI,
+      cota: cotaIntermedia,
+      distancia: distanciaAcumuladaSB + distVI
+    });
+  }
+
+  mostrarTablaSB();
+}
+
+function mostrarTablaSB() {
+  let html = `
+    <table class="w-full text-left bg-gray-700 rounded">
+      <tr class="bg-gray-800">
+        <th class="p-2">Estación</th><th class="p-2">Punto</th><th class="p-2">V+</th><th class="p-2">V-</th><th class="p-2">Sube</th><th class="p-2">Baja</th><th class="p-2">Cota</th><th class="p-2">Distancia</th>
+      </tr>`;
+  datosSB.forEach(d => {
+    html += `<tr>
+      <td class="p-2">${d.estacion}</td>
+      <td class="p-2">${d.punto}</td>
+      <td class="p-2">${d.vmas}</td>
+      <td class="p-2">${d.vmenos}</td>
+      <td class="p-2">${d.sube}</td>
+      <td class="p-2">${d.baja}</td>
+      <td class="p-2">${d.cota.toFixed(2)}</td>
+      <td class="p-2">${d.distancia.toFixed(2)}</td>
+    </tr>`;
+  });
+  html += `</table>`;
+  document.getElementById("tablaSB").innerHTML = html;
+}
+
+function calcularSB() {
+  const ctx = document.getElementById("graficoSB").getContext("2d");
+  new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: datosSB.map(d => d.distancia),
+      datasets: [{
+        label: "Perfil de Cotas",
+        data: datosSB.map(d => d.cota),
+        borderColor: "rgb(59,130,246)",
+        fill: false,
+        tension: 0.3
+      }]
+    },
+    options: {
+      scales: {
+        x: { title: { display: true, text: "Distancia acumulada (m)" } },
+        y: { title: { display: true, text: "Cota (m)" } }
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>

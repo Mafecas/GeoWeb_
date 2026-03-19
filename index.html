@@ -546,13 +546,14 @@
     // ===== Redirección a bienvenida =====
     function handleWelcomeRedirect() {
       const hasVisited = sessionStorage.getItem(CONFIG.BIENVENIDA_KEY);
-      const isWelcomePage = window.location.pathname.includes(CONFIG.BIENVENIDA_URL);
-      
+      const isWelcomePage = window.location.pathname.endsWith('/' + CONFIG.BIENVENIDA_URL) 
+                     || window.location.pathname.endsWith(CONFIG.BIENVENIDA_URL);
+
       if (!hasVisited && !isWelcomePage) {
-        sessionStorage.setItem(CONFIG.BIENVENIDA_KEY, "true");
-        window.location.href = CONFIG.BIENVENIDA_URL;
-      }
-    }
+       sessionStorage.setItem(CONFIG.BIENVENIDA_KEY, "true");
+       window.location.href = "./" + CONFIG.BIENVENIDA_URL;
+       }
+     }   
 
     // ===== Inicialización =====
     document.addEventListener('DOMContentLoaded', () => {

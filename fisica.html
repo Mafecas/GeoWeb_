@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Geodesia Física</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Vanta.js y Three.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vanta/dist/vanta.globe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vanta/dist/vanta.net.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vanta/dist/vanta.waves.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vanta/dist/vanta.birds.min.js"></script>
+  <style>
+    html, body {
+      margin: 0; padding: 0;
+      width: 100vw; height: 100vh;
+      overflow: hidden;
+    }
+    #fondo { position: fixed; inset: 0; z-index: 0; }
+    main, aside { position: relative; z-index: 10; }
+    /* Sidebar oculto por defecto en móvil */
+    #sidebar {
+      transition: transform 0.3s;
+      transform: translateX(-100%);
+      position: fixed; top: 0; left: 0; height: 100vh;
+      width: 256px; /* w-64 */
+      z-index: 30;
+    }
+    #sidebar.open { transform: translateX(0); }
+    @media (min-width: 768px) {
+      #sidebar { 
+        position: relative; 
+        transform: none !important; 
+        height: 100vh;
+      }
+    }
+    /* Fondo oscuro detrás del menú móvil */
+    #sidebar-backdrop {
+      display: none;
+      position: fixed; z-index: 20; inset: 0;
+      background: rgba(0,0,0,0.45);
+      transition: opacity 0.3s;
+    }
+    #sidebar-backdrop.visible { display: block; }
+  </style>
+</head>
+<body class="bg-gray-900 text-white flex h-screen overflow-hidden">
+
+  <!-- Botón menú móvil -->
+  <button id="menuBtn" class="fixed top-4 left-4 z-40 bg-emerald-500 text-white p-3 rounded-full shadow-lg md:hidden" aria-label="Abrir menú">
+    ☰ Menú
+  </button>
+  <div id="sidebar-backdrop"></div>
+
+  <!-- Sidebar -->
+  <aside id="sidebar"
+    class="bg-gradient-to-b from-gray-800 to-gray-900 p-6 shadow-lg flex flex-col md:relative overflow-y-auto">
+    <h2 class="text-2xl font-bold text-emerald-400 text-center mb-8">🌍 Geodesia Física</h2>
+    <nav class="space-y-4 flex-1">
+      <button onclick="cargarModulo('fisica/algoritmo1.html')" class="block w-full text-left px-4 py-3 rounded-lg hover:bg-emerald-600 transition">⚖️ Potencial Gravitacional Superficie Esferica</button>
+      <button onclick="cargarModulo('fisica/algoritmo2.html')" class="block w-full text-left px-4 py-3 rounded-lg hover:bg-emerald-600 transition">🧲 Potencial Gravitacional Esfera Homogénea</button>
+      <button onclick="cargarModulo('fisica/algoritmo3.html')" class="block w-full text-left px-4 py-3 rounded-lg hover:bg-emerald-600 transition">🌍 Variación del potencial gravitacional </button>
+      <button onclick="cargarModulo('fisica/algoritmo4.html')" class="block w-full text-left px-4 py-3 rounded-lg hover:bg-emerald-600 transition">📈 EGM96 (META)</button>
+    </nav>
+    <!-- Botón volver -->
+    <button onclick="window.history.back()" 
+      class="mt-6 block text-center px-4 py-3 rounded-lg bg-white text-gray-800 font-bold hover:bg-gray-300 transition">
+      ⬅ Volver 
+    </button>
+    <!-- Selector de fondos -->
+    <div class="mt-6 mb-2">
+      <label class="block text-sm text-gray-400 mb-2">🌌 Cambiar fondo:</label>
+      <select id="efecto" class="w-full px-2 py-2 rounded text-black">
+        <option value="globe">🌍 Globe</option>
+        <option value="net">🕸️ Net</option>
+        <option value="waves">🌊 Waves</option>
+        <option value="birds">🦅 Birds</option>
+      </select>
+    </div>
+    <div class="text-xs text-gray-400 mt-1 text-center mb-2">© 2024 Geodesia Física</div>
+  </aside>
+
+  <!-- Contenido -->
+  <main class="flex-1 relative overflow-hidden h-full min-w-0">
+    <div id="fondo"></div>
+    <section id="contenido" class="relative z-10 flex flex-col items-center justify-center h-full p-6 md:p-10 text-center overflow-auto">
+      <h2 class="text-4xl font-bold text-emerald-400 mb-6">Bienvenido al módulo de Geodesia Física</h2>
+      <p class="text-lg max-w-2xl text-gray-300">
+        Selecciona un algoritmo en el menú lateral para ver su teoría, calculadora y visualización 3D.
+      </p>
+    </section>
+  </main>
+
+  <script>
+    // Sidebar móvil
+    const sidebar = document.getElementById('sidebar');
+    const menuBtn = document.getElementById('menuBtn');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    let menuOpen = false;
+    function openSidebar() {
+      sidebar.classList.add('open');
+      backdrop.classList.add('visible');
+      menuOpen = true;
+      document.body.style.overflow = 'hidden';
+    }
+    function closeSidebar() {
+      sidebar.classList.remove('open');
+      backdrop.classList.remove('visible');
+      menuOpen = false;
+      document.body.style.overflow = '';
+    }
+    menuBtn.addEventListener('click', openSidebar);
+    backdrop.addEventListener('click', closeSidebar);
+    // Cierra sidebar al tocar enlace (en móvil)
+    sidebar.querySelectorAll('button, select').forEach(el => {
+      el.addEventListener('click', () => { if(window.innerWidth<768) closeSidebar(); });
+    });
+
+    // Cierra menú con tecla ESC
+    window.addEventListener('keydown', (e) => { if(e.key === 'Escape' && menuOpen) closeSidebar(); });
+
+    // Fondo dinámico
+    let efectoActivo;
+    function activarEfecto(tipo) {
+      if (efectoActivo) efectoActivo.destroy();
+      if (tipo === "globe") {
+        efectoActivo = VANTA.GLOBE({ el: "#fondo", mouseControls: true, touchControls: true, color: 0x00ffff, backgroundColor: 0x000000 });
+      } else if (tipo === "net") {
+        efectoActivo = VANTA.NET({ el: "#fondo", mouseControls: true, touchControls: true, color: 0x00ffcc, backgroundColor: 0x000000 });
+      } else if (tipo === "waves") {
+        efectoActivo = VANTA.WAVES({ el: "#fondo", mouseControls: true, touchControls: true, color: 0x0066ff, shininess: 50, waveHeight: 20, waveSpeed: 1, backgroundColor: 0x000000 });
+      } else if (tipo === "birds") {
+        efectoActivo = VANTA.BIRDS({ el: "#fondo", mouseControls: true, touchControls: true, backgroundColor: 0x000000, color1: 0xff00ff, color2: 0x00ffff, birdSize: 1.2, wingSpan: 20 });
+      }
+    }
+    activarEfecto("globe");
+    document.getElementById("efecto").addEventListener("change", (e) => activarEfecto(e.target.value));
+
+    // Cargar módulos
+    function cargarModulo(ruta) {
+      const contenedor = document.getElementById("contenido");
+      contenedor.innerHTML = `
+        <iframe src="${ruta}" class="w-full" style="height:88vh; min-height:340px; border-radius:1rem; background:#141b2c;" frameborder="0" allowfullscreen></iframe>
+      `;
+    }
+  </script>
+</body>
+</html>

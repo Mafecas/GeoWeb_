@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Plataforma educativa para explorar Geodesia Física y Geométrica">
+  <title>GeoWeb - Geodesia Física y Geométrica</title>
+  
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  
+  <!-- Three.js + Vanta.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vanta/dist/vanta.net.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vanta/dist/vanta.globe.min.js"></script>
+  
+  <style>
+    :root {
+      --bg-primary: #0a0e27;
+      --bg-secondary: #1a1f3a;
+      --text-primary: #ffffff;
+      --text-secondary: #b8c1ec;
+      --accent-cyan: #00ffff;
+      --accent-teal: #00ffcc;
+      --overlay-bg: rgba(0, 0, 0, 0.7);
+      --transition-speed: 0.3s;
+    }
+
+    [data-theme="light"] {
+      --bg-primary: #f0f4f8;
+      --bg-secondary: #ffffff;
+      --text-primary: #1a1f3a;
+      --text-secondary: #4a5568;
+      --overlay-bg: rgba(255, 255, 255, 0.9);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      overflow-x: hidden;
+      transition: background-color var(--transition-speed), color var(--transition-speed);
+    }
+
+    /* Animación de entrada */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .fade-in {
+      animation: fadeInUp 0.8s ease-out;
+    }
+
+    /* Header */
+    header {
+      background: var(--bg-secondary) !important;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      transition: all var(--transition-speed);
+    }
+
+    .logo {
+      width: 40px;
+      height: 40px;
+      animation: rotate 20s linear infinite;
+    }
+
+    @keyframes rotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      background: linear-gradient(45deg, var(--accent-cyan), var(--accent-teal));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Botones del header */
+    .header-btn {
+      border: 2px solid var(--accent-cyan);
+      background: transparent;
+      color: var(--text-primary);
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 1.2rem;
+    }
+
+    .header-btn:hover {
+      background: var(--accent-cyan);
+      color: var(--bg-primary);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 255, 255, 0.4);
+    }
+
+    /* Secciones principales */
+    main {
+      min-height: calc(100vh - 120px);
+    }
+
+    section {
+      position: relative;
+      min-height: 500px;
+      overflow: hidden;
+      transition: transform 0.5s ease;
+    }
+
+    section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.3));
+      z-index: 1;
+      transition: opacity 0.5s ease;
+    }
+
+    section:hover::before {
+      opacity: 0.7;
+    }
+
+    section:hover {
+      transform: scale(1.02);
+    }
+
+    .overlay {
+      position: relative;
+      z-index: 2;
+      background: var(--overlay-bg);
+      backdrop-filter: blur(15px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 3rem !important;
+      max-width: 500px;
+      transition: all 0.4s ease;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .overlay:hover {
+      transform: translateY(-10px);
+      box-shadow: 0 20px 60px rgba(0, 255, 255, 0.3);
+    }
+
+    .overlay h2 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-teal));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .overlay p {
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* Botones CTA */
+    .cta-btn {
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-teal));
+      border: none;
+      padding: 14px 32px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      border-radius: 12px;
+      color: var(--bg-primary);
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      box-shadow: 0 6px 20px rgba(0, 255, 255, 0.3);
+    }
+
+    .cta-btn:hover {
+      transform: translateY(-3px) scale(1.05);
+      box-shadow: 0 10px 30px rgba(0, 255, 255, 0.5);
+      color: white;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(5px);
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal-content {
+      background: var(--bg-secondary);
+      padding: 2.5rem;
+      border-radius: 20px;
+      max-width: 600px;
+      width: 90%;
+      position: relative;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      animation: slideUp 0.4s ease;
+      border: 1px solid rgba(0, 255, 255, 0.2);
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(50px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      font-size: 2rem;
+      cursor: pointer;
+      color: var(--accent-cyan);
+      transition: all 0.3s ease;
+      line-height: 1;
+    }
+
+    .close-btn:hover {
+      transform: rotate(90deg) scale(1.2);
+      color: var(--accent-teal);
+    }
+
+    .modal-content h2 {
+      color: var(--accent-cyan);
+      margin-bottom: 1.5rem;
+      font-size: 2rem;
+    }
+
+    .modal-content p {
+      color: var(--text-secondary);
+      line-height: 1.8;
+      margin-bottom: 1rem;
+    }
+
+    /* Footer */
+    footer {
+      background: var(--bg-secondary);
+      border-top: 2px solid var(--accent-cyan);
+      padding: 1.5rem 0;
+      box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      h1 { font-size: 1.4rem; }
+      .overlay { padding: 2rem !important; }
+      .overlay h2 { font-size: 1.8rem; }
+      section { min-height: 400px; }
+      .modal-content { padding: 2rem; width: 95%; }
+    }
+
+    /* Loading indicator */
+    .loading {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 3000;
+    }
+
+    .spinner {
+      width: 60px;
+      height: 60px;
+      border: 4px solid rgba(0, 255, 255, 0.2);
+      border-top-color: var(--accent-cyan);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading Spinner -->
+  <div id="loading" class="loading" style="display: none;">
+    <div class="spinner"></div>
+  </div>
+
+  <div class="container-fluid vh-100 d-flex flex-column fade-in">
+    <!-- Header -->
+    <header class="d-flex align-items-center justify-content-between py-3 px-4">
+      <div class="d-flex align-items-center">
+        <img src="https://img.icons8.com/ios-filled/40/ffffff/globe-earth.png" alt="Logo GeoWeb" class="logo me-3">
+        <h1>GeoWeb</h1>
+      </div>
+      <div class="d-flex gap-2">
+        <button id="theme-toggle" class="header-btn" aria-label="Cambiar tema" title="Cambiar tema">
+          <span id="theme-icon">🌙</span>
+        </button>
+        <button id="about-btn" class="header-btn" aria-label="Acerca de" title="Acerca de">ℹ️</button>
+      </div>
+    </header>
+
+    <!-- Modal Acerca de -->
+    <div id="about-modal" class="modal-overlay" role="dialog" aria-labelledby="modal-title" aria-hidden="true">
+      <div class="modal-content">
+        <span id="close-modal" class="close-btn" aria-label="Cerrar" tabindex="0">&times;</span>
+        <h2 id="modal-title">Acerca de GeoWeb</h2>
+        <p>
+          <strong>GeoWeb</strong> es una plataforma educativa interactiva diseñada para explorar los fascinantes 
+          conceptos de <em>Geodesia Física</em> y <em>Geodesia Geométrica</em>.
+        </p>
+        <p>
+          Integramos visualizaciones 3D inmersivas, calculadoras especializadas y explicaciones detalladas 
+          que facilitan la comprensión del campo gravitacional terrestre y los métodos geométricos de medición geodésica.
+        </p>
+        <p style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid rgba(0,255,255,0.2);">
+          <strong>Proyecto académico</strong><br>
+          Ingeniería Catastral y Geodesia · 2025
+        </p>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="row flex-grow-1 g-0">
+      <!-- Geodesia Geométrica -->
+      <section id="geometrica" class="col-md-6 d-flex align-items-center justify-content-center">
+        <div class="overlay text-center">
+          <h2 class="mb-3">Geodesia Geométrica</h2>
+          <p class="mb-4">
+            Explora instrumentos de medición, técnicas de observación y cálculos precisos 
+            en el espacio físico tridimensional.
+          </p>
+          <a href="geometrica.html" class="btn cta-btn">
+            Explorar Módulo Geométrico
+          </a>
+        </div>
+      </section>
+
+      <!-- Geodesia Física -->
+      <section id="fisica" class="col-md-6 d-flex align-items-center justify-content-center">
+        <div class="overlay text-center">
+          <h2 class="mb-3">Geodesia Física</h2>
+          <p class="mb-4">
+            Sumérgete en el estudio del campo gravitacional terrestre, el geoide 
+            y las anomalías gravimétricas.
+          </p>
+          <a href="fisica.html" class="btn cta-btn">
+            Explorar Módulo Físico
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center small">
+      <p class="mb-0">© 2025 GeoWeb · Proyecto académico de Geodesia</p>
+    </footer>
+  </div>
+
+  <script>
+    // ===== Configuración y utilidades =====
+    const CONFIG = {
+      BIENVENIDA_KEY: "vistoBienvenida",
+      BIENVENIDA_URL: "bienvenida.html",
+      THEME_KEY: "geowebTheme"
+    };
+
+    const $ = (selector) => document.querySelector(selector);
+    const $$ = (selector) => document.querySelectorAll(selector);
+
+    // ===== Sistema de temas =====
+    class ThemeManager {
+      constructor() {
+        this.theme = localStorage.getItem(CONFIG.THEME_KEY) || 'dark';
+        this.themeToggle = $('#theme-toggle');
+        this.themeIcon = $('#theme-icon');
+        this.init();
+      }
+
+      init() {
+        this.applyTheme();
+        this.themeToggle?.addEventListener('click', () => this.toggleTheme());
+      }
+
+      applyTheme() {
+        document.documentElement.setAttribute('data-theme', this.theme);
+        if (this.themeIcon) {
+          this.themeIcon.textContent = this.theme === 'dark' ? '🌙' : '☀️';
+        }
+      }
+
+      toggleTheme() {
+        this.theme = this.theme === 'dark' ? 'light' : 'dark';
+        localStorage.setItem(CONFIG.THEME_KEY, this.theme);
+        this.applyTheme();
+        
+        // Reiniciar efectos VANTA con nuevo tema
+        setTimeout(() => initVantaEffects(), 100);
+      }
+    }
+
+    // ===== Sistema de modal =====
+    class ModalManager {
+      constructor(modalId, triggerId, closeId) {
+        this.modal = $(modalId);
+        this.trigger = $(triggerId);
+        this.closeBtn = $(closeId);
+        this.init();
+      }
+
+      init() {
+        if (!this.modal) return;
+
+        this.trigger?.addEventListener('click', () => this.open());
+        this.closeBtn?.addEventListener('click', () => this.close());
+        
+        // Cerrar al hacer click fuera
+        this.modal.addEventListener('click', (e) => {
+          if (e.target === this.modal) this.close();
+        });
+
+        // Cerrar con ESC
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && this.modal.style.display === 'flex') {
+            this.close();
+          }
+        });
+
+        // Accesibilidad: cerrar con Enter en el botón X
+        this.closeBtn?.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') this.close();
+        });
+      }
+
+      open() {
+        this.modal.style.display = 'flex';
+        this.modal.setAttribute('aria-hidden', 'false');
+        this.closeBtn?.focus();
+      }
+
+      close() {
+        this.modal.style.display = 'none';
+        this.modal.setAttribute('aria-hidden', 'true');
+        this.trigger?.focus();
+      }
+    }
+
+    // ===== Efectos VANTA =====
+    let vantaInstances = [];
+
+    function initVantaEffects() {
+      // Destruir instancias existentes
+      vantaInstances.forEach(instance => {
+        try { instance.destroy(); } catch(e) {}
+      });
+      vantaInstances = [];
+
+      if (typeof VANTA === 'undefined') {
+        console.warn('VANTA no está disponible');
+        return;
+      }
+
+      const theme = document.documentElement.getAttribute('data-theme');
+      const isDark = theme === 'dark';
+
+      try {
+        // Geodesia Física - Efecto Globo
+        const fisicaEl = $('#fisica');
+        if (fisicaEl) {
+          vantaInstances.push(VANTA.GLOBE({
+            el: fisicaEl,
+            mouseControls: true,
+            touchControls: true,
+            gyroControls: false,
+            minHeight: 200,
+            minWidth: 200,
+            scale: 1.0,
+            scaleMobile: 1.0,
+            color: isDark ? 0x00ffff : 0x0088ff,
+            backgroundColor: isDark ? 0x000000 : 0xf0f4f8,
+            size: 1.2,
+            backgroundAlpha: isDark ? 0.8 : 0.3
+          }));
+        }
+
+        // Geodesia Geométrica - Efecto Red
+        const geometricaEl = $('#geometrica');
+        if (geometricaEl) {
+          vantaInstances.push(VANTA.NET({
+            el: geometricaEl,
+            mouseControls: true,
+            touchControls: true,
+            gyroControls: false,
+            minHeight: 200,
+            minWidth: 200,
+            scale: 1.0,
+            scaleMobile: 1.0,
+            color: isDark ? 0x00ffcc : 0x00aa88,
+            backgroundColor: isDark ? 0x000000 : 0xf0f4f8,
+            points: 10.0,
+            maxDistance: 20.0,
+            spacing: 15.0,
+            backgroundAlpha: isDark ? 0.8 : 0.3
+          }));
+        }
+      } catch (error) {
+        console.error('Error inicializando efectos VANTA:', error);
+      }
+    }
+
+    // ===== Redirección a bienvenida =====
+    function handleWelcomeRedirect() {
+      const hasVisited = sessionStorage.getItem(CONFIG.BIENVENIDA_KEY);
+      const isWelcomePage = window.location.pathname.includes(CONFIG.BIENVENIDA_URL);
+      
+      if (!hasVisited && !isWelcomePage) {
+        sessionStorage.setItem(CONFIG.BIENVENIDA_KEY, "true");
+        window.location.href = CONFIG.BIENVENIDA_URL;
+      }
+    }
+
+    // ===== Inicialización =====
+    document.addEventListener('DOMContentLoaded', () => {
+      // Inicializar sistemas
+      new ThemeManager();
+      new ModalManager('#about-modal', '#about-btn', '#close-modal');
+      
+      // Inicializar efectos visuales
+      setTimeout(() => initVantaEffects(), 100);
+      
+      // Manejar redirección
+      handleWelcomeRedirect();
+    });
+
+    // ===== Limpieza al salir =====
+    window.addEventListener('beforeunload', () => {
+      vantaInstances.forEach(instance => {
+        try { instance.destroy(); } catch(e) {}
+      });
+    });
+  </script>
+</body>
+</html>
